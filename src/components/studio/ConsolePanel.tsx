@@ -10,7 +10,7 @@ function ProgressRing({ value }: { value: number }) {
   const r = 34;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative size-[86px]">
+    <div className="relative size-[94px]">
       <svg viewBox="0 0 80 80" className="size-full -rotate-90">
         <circle cx="40" cy="40" r={r} fill="none" stroke="var(--line-strong)" strokeWidth="4" />
         <circle
@@ -26,8 +26,8 @@ function ProgressRing({ value }: { value: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[22px] font-semibold leading-none text-txt">{value}%</span>
-        <span className="mt-[4px] text-[10px] text-txt-muted">
+        <span className="text-[21px] font-semibold leading-none text-txt">{value}%</span>
+        <span className="mt-[3px] text-[9.5px] text-txt-muted">
           {value === 100 ? "Completed" : "Running"}
         </span>
       </div>
@@ -92,8 +92,8 @@ export function ConsolePanel({
         </div>
       </section>
 
-      <section className="flex w-[286px] shrink-0 gap-[10px] overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px]">
-        <div className="min-w-0 flex-1">
+      <section className="flex w-[292px] shrink-0 gap-[8px] overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px]">
+        <div className="min-w-0 flex-1 pt-[1px]">
           <h2 className="text-[12px] font-semibold text-txt">Reconstruction Progress</h2>
           <ul className="mt-[10px] space-y-[7px]">
             {PROGRESS_STEPS.map((step, i) => {
@@ -112,7 +112,7 @@ export function ConsolePanel({
             })}
           </ul>
         </div>
-        <div className="flex flex-col items-center justify-center gap-[8px] pb-[4px]">
+        <div className="flex w-[104px] shrink-0 flex-col items-center justify-center gap-[10px] pb-[2px]">
           <ProgressRing value={progress} />
           <span className="font-mono text-[11px] text-txt-muted">03:47</span>
         </div>
