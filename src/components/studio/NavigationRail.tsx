@@ -9,11 +9,11 @@ import {
   Upload,
   Wand2,
 } from "lucide-react";
-import { useState, type ComponentType } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
 
 import { cn } from "@/lib/utils";
 
-const ITEMS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
+const ITEMS: { label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { label: "Explorer", icon: FolderClosed },
   { label: "Reconstruct", icon: Box },
   { label: "Refine", icon: Wand2 },

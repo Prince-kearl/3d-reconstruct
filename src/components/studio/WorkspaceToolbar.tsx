@@ -91,7 +91,7 @@ export function WorkspaceToolbar() {
             label={`Viewport layout ${i + 1}`}
             size={26}
             active={layout === i}
-            className={layout === i ? "bg-accent text-white hover:bg-accent" : undefined}
+            className={layout === i ? "bg-accent text-white hover:bg-accent" : ""}
             onClick={() => setLayout(i)}
           >
             <Icon className="size-[14px]" />
