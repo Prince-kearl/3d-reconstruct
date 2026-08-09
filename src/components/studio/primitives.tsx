@@ -102,31 +102,44 @@ export function SliderControl({
   value,
   onChange,
   inline,
+  min = 0,
+  max = 100,
+  format,
+  labelWidth = 86,
+  valueWidth = 38,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   inline?: boolean;
+  min?: number;
+  max?: number;
+  format?: (v: number) => string;
+  labelWidth?: number;
+  valueWidth?: number;
 }) {
   const id = useId();
+  const pct = ((value - min) / (max - min)) * 100;
+  const display = format ? format(value) : `${value}%`;
   const track = (
     <div className="relative flex h-4 flex-1 items-center">
       <div className="h-[3px] w-full rounded-full bg-line-strong" />
       <div
         className="absolute left-0 h-[3px] rounded-full bg-accent"
-        style={{ width: `${value}%` }}
+        style={{ width: `${pct}%` }}
       />
       <div
         className="pointer-events-none absolute size-[11px] -translate-x-1/2 rounded-full bg-accent-2 ring-2 ring-app/60"
-        style={{ left: `${value}%` }}
+        style={{ left: `${pct}%` }}
       />
       <input
         id={id}
         type="range"
-        min={0}
-        max={100}
+        min={min}
+        max={max}
         value={value}
         aria-label={label}
+        aria-valuetext={display}
         onChange={(e) => onChange(Number(e.target.value))}
         className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0"
       />
@@ -136,11 +149,20 @@ export function SliderControl({
   if (inline) {
     return (
       <div className="flex items-center gap-3">
-        <label htmlFor={id} className="w-[86px] shrink-0 text-[11px] text-txt-muted">
+        <label
+          htmlFor={id}
+          style={{ width: labelWidth }}
+          className="shrink-0 text-[11px] text-txt-muted"
+        >
           {label}
         </label>
         {track}
-        <span className="w-[30px] shrink-0 text-right text-[11px] text-txt">{value}%</span>
+        <span
+          style={{ width: valueWidth }}
+          className="shrink-0 text-right text-[11px] text-txt"
+        >
+          {display}
+        </span>
       </div>
     );
   }
@@ -152,7 +174,9 @@ export function SliderControl({
       </label>
       <div className="flex items-center gap-3">
         {track}
-        <span className="w-[30px] shrink-0 text-right text-[11px] text-txt">{value}%</span>
+        <span style={{ width: valueWidth }} className="shrink-0 text-right text-[11px] text-txt">
+          {display}
+        </span>
       </div>
     </div>
   );
