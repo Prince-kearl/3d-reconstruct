@@ -9,9 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReconstructRoute = ReconstructRouteImport.update({
   id: '/reconstruct',
   path: '/reconstruct',
@@ -24,33 +30,44 @@ const RefineRoute = RefineRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/reconstruct' | '/refine'
+  fullPaths: '/' | '/reconstruct' | '/refine'
   fileRoutesByTo: FileRoutesByTo
-  to: '/reconstruct' | '/refine'
-  id: '__root__' | '/reconstruct' | '/refine'
+  to: '/' | '/reconstruct' | '/refine'
+  id: '__root__' | '/' | '/reconstruct' | '/refine'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reconstruct': {
       id: '/reconstruct'
       path: '/reconstruct'
@@ -69,6 +86,7 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
 }
