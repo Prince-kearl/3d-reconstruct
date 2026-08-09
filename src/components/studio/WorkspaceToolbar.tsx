@@ -1,12 +1,14 @@
 import {
   Box,
   Columns2,
+  Contrast,
   Grid2x2,
   LayoutGrid,
   LayoutPanelTop,
   Maximize,
   MoveHorizontal,
   MoveRight,
+  Network,
   Orbit,
   RotateCcw,
   RotateCw,
@@ -18,8 +20,27 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./primitives";
 
-export function WorkspaceToolbar() {
-  const [mode, setMode] = useState<"Solid" | "Wireframe">("Solid");
+const MODE_ICONS = {
+  Solid: Box,
+  Wireframe: Grid2x2,
+  Topology: Network,
+  "Before / After": Contrast,
+} as const;
+
+export type ViewportMode = keyof typeof MODE_ICONS;
+
+export function WorkspaceToolbar({
+  modes = ["Solid", "Wireframe"],
+  mode: modeProp,
+  onModeChange,
+}: {
+  modes?: readonly ViewportMode[];
+  mode?: ViewportMode;
+  onModeChange?: (m: ViewportMode) => void;
+}) {
+  const [localMode, setLocalMode] = useState<ViewportMode>("Solid");
+  const mode = modeProp ?? localMode;
+  const setMode = onModeChange ?? setLocalMode;
   const [layout, setLayout] = useState(3);
 
   const layoutIcons = [LayoutPanelTop, Columns2, LayoutGrid, Grid2x2];
@@ -49,8 +70,9 @@ export function WorkspaceToolbar() {
       </div>
 
       <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-[4px] rounded-[5px] border border-line bg-surface p-[3px]">
-        {(["Solid", "Wireframe"] as const).map((m) => {
+        {modes.map((m) => {
           const selected = mode === m;
+          const Icon = MODE_ICONS[m];
           return (
             <button
               key={m}
@@ -61,17 +83,11 @@ export function WorkspaceToolbar() {
               className={cn(
                 "flex h-[26px] items-center gap-[6px] rounded-[4px] px-[11px] text-[11.5px] transition-colors",
                 selected
-                  ? "bg-accent/18 font-medium text-txt"
+                  ? "border border-accent/60 bg-accent/18 font-medium text-txt"
                   : "text-txt-muted hover:bg-surface-2 hover:text-txt",
               )}
             >
-              {m === "Solid" ? (
-                <Box className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")} />
-              ) : (
-                <Grid2x2
-                  className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")}
-                />
-              )}
+              <Icon className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")} />
               {m}
             </button>
           );

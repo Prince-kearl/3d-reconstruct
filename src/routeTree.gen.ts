@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReconstructRouteImport } from './routes/reconstruct'
+import { Route as RefineRouteImport } from './routes/refine'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReconstructRoute = ReconstructRouteImport.update({
+  id: '/reconstruct',
+  path: '/reconstruct',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefineRoute = RefineRouteImport.update({
+  id: '/refine',
+  path: '/refine',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/reconstruct': typeof ReconstructRoute
+  '/refine': typeof RefineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/reconstruct': typeof ReconstructRoute
+  '/refine': typeof RefineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/reconstruct': typeof ReconstructRoute
+  '/refine': typeof RefineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/reconstruct' | '/refine'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/reconstruct' | '/refine'
+  id: '__root__' | '/' | '/reconstruct' | '/refine'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ReconstructRoute: typeof ReconstructRoute
+  RefineRoute: typeof RefineRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reconstruct': {
+      id: '/reconstruct'
+      path: '/reconstruct'
+      fullPath: '/reconstruct'
+      preLoaderRoute: typeof ReconstructRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refine': {
+      id: '/refine'
+      path: '/refine'
+      fullPath: '/refine'
+      preLoaderRoute: typeof RefineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ReconstructRoute: ReconstructRoute,
+  RefineRoute: RefineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
