@@ -12,7 +12,7 @@ import {
 
 import { IconButton } from "./primitives";
 
-export function StatusBar() {
+export function StatusBar({ status = "Ready" }: { status?: string }) {
   return (
     <footer className="flex h-[38px] shrink-0 items-center gap-[10px] border-t border-line bg-panel px-[10px] text-[11px] text-txt-muted">
       <IconButton label="Activity" size={22}>
@@ -42,9 +42,9 @@ export function StatusBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-[10px]">
-        <span className="flex items-center gap-[6px]">
+        <span className="flex items-center gap-[6px]" role="status" aria-live="polite">
           <span className="size-[7px] rounded-full bg-ok shadow-[0_0_6px_var(--ok)]" />
-          Ready
+          {status}
         </span>
         <span className="h-[16px] w-px bg-line" />
         <span>GPU: RTX 3060</span>
