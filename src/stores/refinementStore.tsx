@@ -90,7 +90,7 @@ export function RefinementProvider({ children }: { children: ReactNode }) {
   const [comparison, setComparison] = useState(70);
   const [meshHealth, setMeshHealth] = useState(98);
   const [progress, setProgress] = useState(100);
-  const [stagesDone, setStagesDone] = useState(REFINE_STAGES.length);
+  const [stagesDone, setStagesDone] = useState<number>(REFINE_STAGES.length);
   const [logs, setLogs] = useState<string[]>(REFINE_LOGS);
   const [elapsed, setElapsed] = useState("02:17");
 
