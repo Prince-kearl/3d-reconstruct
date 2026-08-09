@@ -8,7 +8,6 @@ import {
   MousePointer2,
   Pencil,
   Smile,
-  SquareDashed,
   Table2,
   CircleMinus,
 } from "lucide-react";
@@ -232,5 +231,3 @@ export function RefineOrthographicViewport({
     </div>
   );
 }
-
-export { SquareDashed as _unused };
