@@ -17,12 +17,12 @@ import { cn } from "@/lib/utils";
 const ITEMS: {
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  to?: "/reconstruct" | "/refine";
+  to?: "/reconstruct" | "/refine" | "/texture";
 }[] = [
   { label: "Explorer", icon: FolderClosed },
   { label: "Reconstruct", icon: Box, to: "/reconstruct" },
   { label: "Refine", icon: Wand2, to: "/refine" },
-  { label: "Texture", icon: Grid2x2 },
+  { label: "Texture", icon: Grid2x2, to: "/texture" },
   { label: "Export", icon: Upload },
   { label: "Scenes", icon: Layers },
   { label: "History", icon: Clock },
