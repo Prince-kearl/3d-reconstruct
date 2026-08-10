@@ -3,17 +3,21 @@ import {
   Columns2,
   Contrast,
   Grid2x2,
+  Image,
   LayoutGrid,
   LayoutPanelTop,
+  Lightbulb,
   Maximize,
   MoveHorizontal,
   MoveRight,
   Network,
   Orbit,
+  Palette,
   RotateCcw,
   RotateCw,
   Scan,
   Sparkles,
+  Grid3x3,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -25,6 +29,10 @@ const MODE_ICONS = {
   Wireframe: Grid2x2,
   Topology: Network,
   "Before / After": Contrast,
+  Textured: Image,
+  Material: Palette,
+  "UV Map": Grid3x3,
+  Lighting: Lightbulb,
 } as const;
 
 export type ViewportMode = keyof typeof MODE_ICONS;

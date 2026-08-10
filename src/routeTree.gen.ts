@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
+import { Route as TextureRouteImport } from './routes/texture'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const RefineRoute = RefineRouteImport.update({
   path: '/refine',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TextureRoute = TextureRouteImport.update({
+  id: '/texture',
+  path: '/texture',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/texture': typeof TextureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/texture': typeof TextureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/texture': typeof TextureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reconstruct' | '/refine'
+  fullPaths: '/' | '/reconstruct' | '/refine' | '/texture'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reconstruct' | '/refine'
-  id: '__root__' | '/' | '/reconstruct' | '/refine'
+  to: '/' | '/reconstruct' | '/refine' | '/texture'
+  id: '__root__' | '/' | '/reconstruct' | '/refine' | '/texture'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
+  TextureRoute: typeof TextureRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RefineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/texture': {
+      id: '/texture'
+      path: '/texture'
+      fullPath: '/texture'
+      preLoaderRoute: typeof TextureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
+  TextureRoute: TextureRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
