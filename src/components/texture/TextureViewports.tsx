@@ -75,7 +75,7 @@ function AxisGizmo({ variant }: { variant: "front" | "right" }) {
 function BrushCursor({ size }: { size: number }) {
   return (
     <span
-      className="pointer-events-none absolute left-[46.5%] top-[41%] flex items-center justify-center rounded-full border border-accent-2 bg-accent/30 shadow-[0_0_18px_var(--accent)]"
+      className="pointer-events-none absolute left-[45%] top-[45%] flex items-center justify-center rounded-full border border-accent-2 bg-accent/30 shadow-[0_0_18px_var(--accent)]"
       style={{ width: size, height: size, transform: "translate(-50%, -50%)" }}
       aria-hidden="true"
     >
@@ -133,7 +133,7 @@ export function TexturePerspectiveViewport({ mode }: { mode: ViewportMode }) {
           src={texPerspective}
           alt="Textured 3D bust of the project subject in perspective view"
           className={cn(
-            "absolute left-1/2 top-[50%] h-[94%] -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-[0_20px_40px_oklch(0_0_0/0.55)]",
+            "absolute left-1/2 top-[52%] h-[84%] -translate-x-1/2 -translate-y-1/2 object-contain drop-shadow-[0_20px_40px_oklch(0_0_0/0.55)]",
             mode === "Material" && "saturate-[0.25]",
             mode === "UV Map" && "opacity-70 contrast-125",
             mode === "Lighting" && "brightness-[0.85] contrast-125",
