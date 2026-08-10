@@ -81,7 +81,7 @@ export function TexturePanel() {
               />
               <span className="block text-[10.5px] text-txt-dim">{s.sourceImage.meta}</span>
               {s.sourceError ? (
-                <span className="block text-[10.5px] text-danger">{s.sourceError}</span>
+                <span className="block text-[10.5px] text-destructive">{s.sourceError}</span>
               ) : null}
             </div>
           </div>
