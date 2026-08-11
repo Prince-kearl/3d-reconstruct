@@ -70,7 +70,7 @@ export function ExportPanel() {
         <PanelSectionTitle>Crystal Dimensions</PanelSectionTitle>
         <Select
           label="Crystal preset"
-          value={CRYSTAL_PRESETS[1]}
+          value={CRYSTAL_PRESETS[1] as string}
           options={CRYSTAL_PRESETS}
           onChange={() => {}}
         />
