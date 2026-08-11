@@ -1,13 +1,17 @@
 import {
   Box,
+  BoxSelect,
   Columns2,
   Contrast,
+  Frame,
+  Gem,
   Grid2x2,
   Image,
   LayoutGrid,
   LayoutPanelTop,
   Lightbulb,
   Maximize,
+  Move3d,
   MoveHorizontal,
   MoveRight,
   Network,
@@ -17,6 +21,7 @@ import {
   RotateCw,
   Scan,
   Sparkles,
+  SquareSplitHorizontal,
   Grid3x3,
 } from "lucide-react";
 import { useState } from "react";
@@ -33,6 +38,13 @@ const MODE_ICONS = {
   Material: Palette,
   "UV Map": Grid3x3,
   Lighting: Lightbulb,
+  "Crystal Preview": Gem,
+  Bounds: Frame,
+  "Mesh Check": BoxSelect,
+  Gizmo: Move3d,
+  Overlay: Columns2,
+  "Side by Side": SquareSplitHorizontal,
+  Difference: Contrast,
 } as const;
 
 export type ViewportMode = keyof typeof MODE_ICONS;
