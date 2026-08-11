@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExportRouteImport } from './routes/export'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
 import { Route as TextureRouteImport } from './routes/texture'
@@ -17,6 +18,11 @@ import { Route as TextureRouteImport } from './routes/texture'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportRoute = ExportRouteImport.update({
+  id: '/export',
+  path: '/export',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReconstructRoute = ReconstructRouteImport.update({
@@ -37,12 +43,14 @@ const TextureRoute = TextureRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/export': typeof ExportRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/texture': typeof TextureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/export': typeof ExportRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/texture': typeof TextureRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/export': typeof ExportRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/texture': typeof TextureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/reconstruct' | '/refine' | '/texture'
+  fullPaths: '/' | '/export' | '/reconstruct' | '/refine' | '/texture'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/reconstruct' | '/refine' | '/texture'
-  id: '__root__' | '/' | '/reconstruct' | '/refine' | '/texture'
+  to: '/' | '/export' | '/reconstruct' | '/refine' | '/texture'
+  id: '__root__' | '/' | '/export' | '/reconstruct' | '/refine' | '/texture'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExportRoute: typeof ExportRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
   TextureRoute: typeof TextureRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/export': {
+      id: '/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof ExportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reconstruct': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExportRoute: ExportRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
   TextureRoute: TextureRoute,
@@ -111,13 +129,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
