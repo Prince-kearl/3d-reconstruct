@@ -66,7 +66,7 @@ export function ExportProvider({ children }: { children: ReactNode }) {
   const [fileName, setFileName] = useState("portrait-project.obj");
   const [logs, setLogs] = useState<string[]>(EXPORT_LOGS);
   const [progress, setProgress] = useState(100);
-  const [stagesDone, setStagesDone] = useState(EXPORT_STAGES.length);
+  const [stagesDone, setStagesDone] = useState<number>(EXPORT_STAGES.length);
   const [elapsed, setElapsed] = useState("00:31");
   const [statusLabel, setStatusLabel] = useState("Ready");
   const [running, setRunning] = useState(false);
