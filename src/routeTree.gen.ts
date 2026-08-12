@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConsoleRouteImport } from './routes/console'
+import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const ConsoleRoute = ConsoleRouteImport.update({
   id: '/console',
   path: '/console',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExportRoute = ExportRouteImport.update({
@@ -68,6 +74,7 @@ const TextureRoute = TextureRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConsoleRoute: typeof ConsoleRoute
+  ExplorerRoute: typeof ExplorerRoute
   ExportRoute: typeof ExportRoute
   HistoryRoute: typeof HistoryRoute
   ReconstructRoute: typeof ReconstructRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/console'
       fullPath: '/console'
       preLoaderRoute: typeof ConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/export': {
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConsoleRoute: ConsoleRoute,
+  ExplorerRoute: ExplorerRoute,
   ExportRoute: ExportRoute,
   HistoryRoute: HistoryRoute,
   ReconstructRoute: ReconstructRoute,
