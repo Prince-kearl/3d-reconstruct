@@ -57,7 +57,7 @@ export function WorkspaceTabsToolbar({
 
       <div className="ml-auto flex items-center gap-[3px]">
         {actions.map(({ label, icon: Icon, onClick }) => (
-          <IconButton key={label} label={label} size={26} onClick={onClick}>
+          <IconButton key={label} label={label} size={26} onClick={onClick ?? (() => {})}>
             <Icon className="size-[14px]" />
           </IconButton>
         ))}
