@@ -10,16 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConsoleRouteImport } from './routes/console'
+import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
 import { Route as ScenesRouteImport } from './routes/scenes'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TextureRouteImport } from './routes/texture'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleRoute = ConsoleRouteImport.update({
+  id: '/console',
+  path: '/console',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplorerRoute = ExplorerRouteImport.update({
+  id: '/explorer',
+  path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExportRoute = ExportRouteImport.update({
@@ -47,6 +60,11 @@ const ScenesRoute = ScenesRouteImport.update({
   path: '/scenes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TextureRoute = TextureRouteImport.update({
   id: '/texture',
   path: '/texture',
@@ -55,69 +73,90 @@ const TextureRoute = TextureRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/scenes': typeof ScenesRoute
+  '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/scenes': typeof ScenesRoute
+  '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/console': typeof ConsoleRoute
+  '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
   '/scenes': typeof ScenesRoute
+  '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
     | '/refine'
     | '/scenes'
+    | '/settings'
     | '/texture'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
     | '/refine'
     | '/scenes'
+    | '/settings'
     | '/texture'
   id:
     | '__root__'
     | '/'
+    | '/console'
+    | '/explorer'
     | '/export'
     | '/history'
     | '/reconstruct'
     | '/refine'
     | '/scenes'
+    | '/settings'
     | '/texture'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ConsoleRoute: typeof ConsoleRoute
+  ExplorerRoute: typeof ExplorerRoute
   ExportRoute: typeof ExportRoute
   HistoryRoute: typeof HistoryRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
   ScenesRoute: typeof ScenesRoute
+  SettingsRoute: typeof SettingsRoute
   TextureRoute: typeof TextureRoute
 }
 
@@ -128,6 +167,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/console': {
+      id: '/console'
+      path: '/console'
+      fullPath: '/console'
+      preLoaderRoute: typeof ConsoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explorer': {
+      id: '/explorer'
+      path: '/explorer'
+      fullPath: '/explorer'
+      preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/export': {
@@ -165,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScenesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/texture': {
       id: '/texture'
       path: '/texture'
@@ -177,11 +237,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConsoleRoute: ConsoleRoute,
+  ExplorerRoute: ExplorerRoute,
   ExportRoute: ExportRoute,
   HistoryRoute: HistoryRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
   ScenesRoute: ScenesRoute,
+  SettingsRoute: SettingsRoute,
   TextureRoute: TextureRoute,
 }
 export const routeTree = rootRouteImport

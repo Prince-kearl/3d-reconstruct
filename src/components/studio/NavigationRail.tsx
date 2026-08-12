@@ -17,17 +17,26 @@ import { cn } from "@/lib/utils";
 const ITEMS: {
   label: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
-  to?: "/reconstruct" | "/refine" | "/texture" | "/export" | "/scenes" | "/history";
+  to?:
+    | "/reconstruct"
+    | "/refine"
+    | "/texture"
+    | "/export"
+    | "/scenes"
+    | "/history"
+    | "/explorer"
+    | "/console"
+    | "/settings";
 }[] = [
-  { label: "Explorer", icon: FolderClosed },
+  { label: "Explorer", icon: FolderClosed, to: "/explorer" },
   { label: "Reconstruct", icon: Box, to: "/reconstruct" },
   { label: "Refine", icon: Wand2, to: "/refine" },
   { label: "Texture", icon: Grid2x2, to: "/texture" },
   { label: "Export", icon: Upload, to: "/export" },
   { label: "Scenes", icon: Layers, to: "/scenes" },
   { label: "History", icon: Clock, to: "/history" },
-  { label: "Console", icon: SquareTerminal },
-  { label: "Settings", icon: Settings },
+  { label: "Console", icon: SquareTerminal, to: "/console" },
+  { label: "Settings", icon: Settings, to: "/settings" },
 ];
 
 export function NavigationRail() {
