@@ -1,0 +1,38 @@
+export const STATE_CARDS = [
+  {
+    id: "empty",
+    kind: "empty" as const,
+    title: "No Source Image",
+    body: "Drop a portrait photo here or browse your disk to begin a reconstruction.",
+    primary: "Browse Images",
+    secondary: "Use Sample Portrait",
+    meta: "Supports JPG, PNG, TIFF up to 60 MP",
+  },
+  {
+    id: "loading",
+    kind: "loading" as const,
+    title: "Loading Project Assets",
+    body: "Reading meshes, textures and scene graph from disk.",
+    primary: "Cancel",
+    secondary: "Run in Background",
+    meta: "3 of 7 assets loaded — 42%",
+  },
+  {
+    id: "error",
+    kind: "error" as const,
+    title: "Reconstruction Failed",
+    body: "No subject could be detected in the supplied image. The pipeline stopped at stage 2.",
+    primary: "Retry Reconstruction",
+    secondary: "Open Log",
+    meta: "Error ECON-204 · 10:12:44",
+  },
+  {
+    id: "recovery",
+    kind: "recovery" as const,
+    title: "Autosave Available",
+    body: "The last session ended unexpectedly. A recovery point from 10:39 can be restored.",
+    primary: "Restore Autosave",
+    secondary: "Discard",
+    meta: "Revision v1.4 · 148.2 MB",
+  },
+];
