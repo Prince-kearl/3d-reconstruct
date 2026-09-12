@@ -66,15 +66,17 @@ export function WorkspaceToolbar({
   const layoutIcons = [LayoutPanelTop, Columns2, LayoutGrid, Grid2x2];
 
   return (
-    <div className="relative flex h-[44px] shrink-0 items-center gap-[10px] border-b border-line bg-panel px-[12px]">
-      <Sparkles className="size-[14px] text-accent-2" />
-      <span className="text-[12.5px] font-medium text-txt">3D Workspace</span>
-      <div className="ml-[16px] flex items-center gap-[2px]">
+    <div className="scroll-thin flex h-[44px] shrink-0 items-center gap-[8px] overflow-x-auto border-b border-line bg-panel px-[10px] sm:gap-[10px] sm:px-[12px]">
+      <div className="hidden shrink-0 items-center gap-[6px] xl:flex">
+        <Sparkles className="size-[14px] text-accent-2" />
+        <span className="text-[12.5px] font-medium text-txt">3D Workspace</span>
+      </div>
+      <div className="hidden shrink-0 items-center gap-[2px] xl:flex">
         <IconButton label="Fit view" size={26}>
           <Maximize className="size-[14px]" />
         </IconButton>
       </div>
-      <div className="ml-[16px] flex items-center gap-[2px]">
+      <div className="hidden shrink-0 items-center gap-[2px] lg:flex">
         <IconButton label="Undo" size={26}>
           <RotateCcw className="size-[13px]" />
         </IconButton>
@@ -89,7 +91,7 @@ export function WorkspaceToolbar({
         </IconButton>
       </div>
 
-      <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-[4px] rounded-[5px] border border-line bg-surface p-[3px]">
+      <div className="flex shrink-0 items-center gap-[4px] rounded-[5px] border border-line bg-surface p-[3px] lg:mx-auto">
         {modes.map((m) => {
           const selected = mode === m;
           const Icon = MODE_ICONS[m];
@@ -101,20 +103,20 @@ export function WorkspaceToolbar({
               aria-checked={selected}
               onClick={() => setMode(m)}
               className={cn(
-                "flex h-[26px] items-center gap-[6px] rounded-[4px] px-[11px] text-[11.5px] transition-colors",
+                "flex h-[26px] shrink-0 items-center gap-[6px] rounded-[4px] px-[9px] text-[11.5px] transition-colors sm:px-[11px]",
                 selected
                   ? "border border-accent/60 bg-accent/18 font-medium text-txt"
                   : "text-txt-muted hover:bg-surface-2 hover:text-txt",
               )}
             >
               <Icon className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")} />
-              {m}
+              <span className="hidden sm:inline">{m}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="ml-auto flex items-center gap-[3px]">
+      <div className="ml-auto hidden shrink-0 items-center gap-[3px] md:flex">
         <IconButton label="Scene controls" size={26}>
           <Orbit className="size-[14px]" />
         </IconButton>

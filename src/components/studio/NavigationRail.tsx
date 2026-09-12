@@ -39,31 +39,60 @@ const ITEMS: {
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
 
-export function NavigationRail() {
+export function NavigationRail({
+  expanded = false,
+  onNavigate,
+}: {
+  expanded?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
     <nav
       aria-label="Workspace sections"
-      className="flex w-[80px] shrink-0 flex-col items-stretch gap-[10px] border-r border-line bg-panel py-[12px]"
+      className={cn(
+        "flex shrink-0 border-line bg-panel py-[12px]",
+        expanded
+          ? "w-full flex-col items-stretch gap-[2px] border-r-0"
+          : "w-[80px] flex-col items-stretch gap-[10px] border-r",
+      )}
     >
       {ITEMS.map(({ label, icon: Icon, to }) => {
         const isActive = to ? pathname.startsWith(to) : false;
         const cls = cn(
-          "relative mx-[6px] flex h-[52px] flex-col items-center justify-center gap-[5px] rounded-[5px] transition-colors",
-          isActive ? "bg-accent/12 shadow-[inset_0_0_0_1px_var(--accent-deep)]" : "hover:bg-surface-2/70",
+          "relative transition-colors",
+          expanded
+            ? "mx-[8px] flex h-[42px] flex-row items-center gap-[10px] rounded-[5px] px-[10px]"
+            : "mx-[6px] flex h-[52px] flex-col items-center justify-center gap-[5px] rounded-[5px]",
+          isActive
+            ? "bg-accent/12 shadow-[inset_0_0_0_1px_var(--accent-deep)]"
+            : "hover:bg-surface-2/70",
         );
         const inner = (
           <>
             {isActive ? (
-              <span className="absolute -left-[6px] top-[6px] h-[40px] w-[2px] rounded-r bg-accent-2" />
+              <span
+                className={cn(
+                  "absolute bg-accent-2",
+                  expanded
+                    ? "left-0 top-[8px] h-[26px] w-[2px] rounded-r"
+                    : "-left-[6px] top-[6px] h-[40px] w-[2px] rounded-r",
+                )}
+              />
             ) : null}
             <Icon
-              className={cn("size-[18px]", isActive ? "text-accent-2" : "text-txt-dim")}
+              className={cn(
+                expanded ? "size-[16px]" : "size-[18px]",
+                isActive ? "text-accent-2" : "text-txt-dim",
+              )}
               strokeWidth={1.6}
             />
             <span
-              className={cn("text-[10px] leading-none", isActive ? "text-accent-2" : "text-txt-dim")}
+              className={cn(
+                expanded ? "text-[12.5px]" : "text-[10px] leading-none",
+                isActive ? "text-accent-2" : "text-txt-dim",
+              )}
             >
               {label}
             </span>
@@ -72,7 +101,14 @@ export function NavigationRail() {
 
         if (to) {
           return (
-            <Link key={label} to={to} title={label} aria-label={label} className={cls}>
+            <Link
+              key={label}
+              to={to}
+              title={label}
+              aria-label={label}
+              className={cls}
+              onClick={onNavigate}
+            >
               {inner}
             </Link>
           );

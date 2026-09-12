@@ -16,9 +16,15 @@ dist-ssr
 .nitro
 *.local
 
+# Env files (.env.local etc. are also covered by *.local above)
+.env
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
+
+# Supabase CLI local state
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*

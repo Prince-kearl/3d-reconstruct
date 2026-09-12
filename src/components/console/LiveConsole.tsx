@@ -1,161 +1,140 @@
-import { ChevronRight, Copy, Pause, Play, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Copy, Download, Pause, Play } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
-import { CONSOLE_EVENTS, type ConsoleEvent } from "@/data/consoleMock";
-import { Select, ToggleSwitch } from "@/components/studio/primitives";
+import { ToggleSwitch } from "@/components/studio/primitives";
 import { cn } from "@/lib/utils";
+import { useReconstruct } from "@/stores/reconstructStore";
+import type { LogLevelFilter } from "./ConsoleExplorer";
 
-const LEVEL_STYLE: Record<ConsoleEvent["level"], string> = {
-  INFO: "border-axis-z/50 bg-axis-z/15 text-axis-z",
-  OK: "border-ok/50 bg-ok/15 text-ok",
-  WARN: "border-lime/50 bg-lime/15 text-lime",
-  ERR: "border-axis-x/50 bg-axis-x/15 text-axis-x",
-};
+function levelOf(line: string): "Info" | "Error" {
+  return /error/i.test(line) ? "Error" : "Info";
+}
 
-const PROCESSES = ["All Processes", "Reconstruction", "Refinement", "Texture", "Export"];
+function downloadText(text: string, fileName: string) {
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
-export function LiveConsole() {
-  const [streaming, setStreaming] = useState(true);
-  const [follow, setFollow] = useState(true);
-  const [process, setProcess] = useState(PROCESSES[0]!);
-  const [cleared, setCleared] = useState(false);
-  const [command, setCommand] = useState("");
-  const [mode, setMode] = useState("Safe Mode");
+export function LiveConsole({
+  search,
+  level,
+  followTail,
+  onToggleFollowTail,
+}: {
+  search: string;
+  level: LogLevelFilter;
+  followTail: boolean;
+  onToggleFollowTail: (v: boolean) => void;
+}) {
+  const { logLines, status, sourceFileName } = useReconstruct();
+  const listRef = useRef<HTMLOListElement>(null);
 
-  const events = useMemo(
-    () =>
-      cleared
-        ? []
-        : CONSOLE_EVENTS.filter((e) => process === "All Processes" || e.source === process),
-    [cleared, process],
-  );
+  const isLive =
+    status === "loading-model" ||
+    status === "removing-background" ||
+    status === "estimating-depth" ||
+    status === "building-mesh";
 
-  const blanks = Array.from({ length: Math.max(0, 20 - events.length) }, (_, i) =>
-    String(events.length + i + 1).padStart(3, "0"),
-  );
+  const filtered = logLines.filter((line) => {
+    if (level !== "All" && levelOf(line) !== level) return false;
+    if (search.trim() && !line.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  });
+
+  useEffect(() => {
+    if (!followTail) return;
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [filtered.length, followTail]);
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-line bg-panel">
+    <section className="flex h-[320px] min-w-0 shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1">
       <div className="flex h-[38px] shrink-0 items-center gap-[10px] border-b border-line px-[12px]">
         <span
-          className={cn("size-[9px] rounded-full", streaming ? "bg-ok" : "bg-txt-dim")}
-          style={streaming ? { boxShadow: "0 0 8px var(--ok)" } : undefined}
+          className={cn("size-[9px] rounded-full", isLive ? "bg-ok" : "bg-txt-dim")}
+          style={isLive ? { boxShadow: "0 0 8px var(--ok)" } : undefined}
         />
         <h2 className="text-[13px] font-medium text-txt">Live Console</h2>
-        <span className="flex items-center gap-[5px] text-[11px] text-ok">
-          <span className="size-[6px] rounded-full bg-ok" />
-          {streaming ? "Streaming" : "Paused"}
+        <span className="flex items-center gap-[5px] text-[11px] text-txt-muted">
+          <span className={cn("size-[6px] rounded-full", isLive ? "bg-ok" : "bg-txt-dim")} />
+          {isLive ? "Streaming" : "Idle"}
         </span>
-        <Select
-          label="Process filter"
-          value={process}
-          options={PROCESSES}
-          onChange={setProcess}
-          className="ml-[14px] !h-[26px] w-[150px]"
-        />
+
+        <span className="ml-auto flex items-center gap-[7px] text-[11px] text-txt-muted">
+          Follow Tail
+          <ToggleSwitch label="Follow tail" checked={followTail} onChange={onToggleFollowTail} />
+        </span>
         <button
           type="button"
-          aria-label={streaming ? "Pause stream" : "Resume stream"}
-          aria-pressed={!streaming}
-          onClick={() => setStreaming(!streaming)}
+          aria-label={followTail ? "Pause following" : "Resume following"}
+          onClick={() => onToggleFollowTail(!followTail)}
           className="flex size-[26px] items-center justify-center rounded-[4px] border border-line bg-surface text-txt-muted hover:text-txt"
         >
-          {streaming ? <Pause className="size-[12px]" /> : <Play className="size-[12px]" />}
-        </button>
-        <span className="ml-[6px] flex items-center gap-[7px] text-[11px] text-txt-muted">
-          Follow Tail
-          <ToggleSwitch label="Follow tail" checked={follow} onChange={setFollow} />
-        </span>
-        <button
-          type="button"
-          aria-label="Clear console"
-          onClick={() => setCleared(true)}
-          className="ml-[6px] flex size-[26px] items-center justify-center rounded-[4px] border border-line bg-surface text-txt-muted hover:text-txt"
-        >
-          <Trash2 className="size-[12px]" />
+          {followTail ? <Pause className="size-[12px]" /> : <Play className="size-[12px]" />}
         </button>
         <button
           type="button"
-          aria-label="Copy console output"
-          onClick={() => toast.success("Console output copied")}
+          aria-label="Copy visible log lines"
+          onClick={() => {
+            void navigator.clipboard.writeText(filtered.join("\n")).then(
+              () => toast.success("Log lines copied"),
+              () => toast.error("Could not copy — clipboard unavailable"),
+            );
+          }}
           className="flex size-[26px] items-center justify-center rounded-[4px] border border-line bg-surface text-txt-muted hover:text-txt"
         >
           <Copy className="size-[12px]" />
         </button>
+        <button
+          type="button"
+          aria-label="Download visible log lines"
+          onClick={() => {
+            const name = (sourceFileName ?? "console").replace(/\.[^.]+$/, "");
+            downloadText(filtered.join("\n"), `${name}-log.txt`);
+          }}
+          className="flex size-[26px] items-center justify-center rounded-[4px] border border-line bg-surface text-txt-muted hover:text-txt"
+        >
+          <Download className="size-[12px]" />
+        </button>
       </div>
 
-      <ol className="scroll-thin min-h-0 flex-1 overflow-y-auto py-[6px] font-mono text-[11px]">
-        {events.map((e, i) => (
-          <li
-            key={e.n}
-            className={cn(
-              "flex items-center gap-[10px] px-[12px] py-[2.5px]",
-              i === 10 ? "bg-surface-2/60" : null,
-            )}
-          >
+      <ol
+        ref={listRef}
+        className="scroll-thin min-h-0 flex-1 overflow-y-auto py-[6px] font-mono text-[11px]"
+      >
+        {filtered.map((line, i) => (
+          <li key={`${i}-${line}`} className="flex items-center gap-[10px] px-[12px] py-[2.5px]">
             <span className="w-[3px] self-stretch rounded-full bg-accent/70" aria-hidden="true" />
-            <span className="w-[26px] text-txt-dim">{e.n}</span>
-            <span className="text-txt-dim">[{e.time}]</span>
+            <span className="w-[26px] shrink-0 text-txt-dim">{String(i + 1).padStart(3, "0")}</span>
             <span
               className={cn(
-                "w-[44px] rounded-[3px] border text-center text-[9.5px] font-semibold leading-[15px]",
-                LEVEL_STYLE[e.level],
+                "w-[40px] shrink-0 rounded-[3px] border text-center text-[9.5px] font-semibold leading-[15px]",
+                levelOf(line) === "Error"
+                  ? "border-destructive/50 bg-destructive/15 text-destructive"
+                  : "border-axis-z/50 bg-axis-z/15 text-axis-z",
               )}
             >
-              {e.level}
+              {levelOf(line)}
             </span>
-            <span className="truncate text-txt-muted">{e.text}</span>
+            <span className="truncate text-txt-muted">{line}</span>
           </li>
         ))}
-        {events.length === 0 ? (
+        {filtered.length === 0 ? (
           <li className="px-[12px] py-[10px] text-[11px] text-txt-dim">
-            Console cleared — no events for this filter.
+            {logLines.length === 0
+              ? "No output yet — start a reconstruction to see live logs."
+              : "No log lines match this filter."}
           </li>
         ) : null}
-        {blanks.map((n) => (
-          <li key={n} className="flex gap-[10px] px-[12px] py-[2.5px] text-txt-dim/60">
-            <span className="w-[3px]" aria-hidden="true" />
-            <span className="w-[26px]">{n}</span>
-          </li>
-        ))}
       </ol>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!command.trim()) return;
-          toast.success(`Command queued: ${command.trim()}`);
-          setCommand("");
-        }}
-        className="flex h-[46px] shrink-0 items-center gap-[8px] border-t border-line px-[10px]"
-      >
-        <ChevronRight className="size-[14px] text-accent-2" />
-        <input
-          aria-label="Console command"
-          placeholder="Enter command or filter expression..."
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          className="h-[30px] min-w-0 flex-1 rounded-[4px] border border-line bg-surface px-[10px] text-[11.5px] text-txt outline-none placeholder:text-txt-dim focus-visible:border-accent"
-        />
-        <Select
-          label="Execution mode"
-          value={mode}
-          options={["Safe Mode", "Verbose", "Dry Run"]}
-          onChange={setMode}
-          className="!h-[30px] w-[118px]"
-        />
-        <span className="rounded-[4px] border border-line bg-surface px-[10px] py-[6px] text-[10.5px] text-txt-dim">
-          Ctrl + Enter
-        </span>
-        <button
-          type="submit"
-          style={{ background: "var(--gradient-accent)" }}
-          className="h-[30px] rounded-[4px] px-[18px] text-[11.5px] font-semibold text-white"
-        >
-          Run
-        </button>
-      </form>
     </section>
   );
 }

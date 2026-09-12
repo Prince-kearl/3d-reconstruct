@@ -1,174 +1,80 @@
-import {
-  CircleDashed,
-  CirclePlus,
-  Droplet,
-  FoldHorizontal,
-  Hand,
-  Minimize2,
-  RefreshCw,
-  Trash2,
-  Waves,
-} from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import { Link } from "@tanstack/react-router";
+import { FolderOpen, Paintbrush } from "lucide-react";
+import { useState } from "react";
 
-import {
-  FieldLabel,
-  PanelSectionTitle,
-  SegmentedControl,
-  Select,
-  SliderControl,
-  ToggleSwitch,
-} from "@/components/studio/primitives";
-import { cn } from "@/lib/utils";
-import { useRefinement, type RefinementTool } from "@/stores/refinementStore";
+import { PanelSectionTitle } from "@/components/studio/primitives";
+import { useReconstruct } from "@/stores/reconstructStore";
 
-const TOOLS: { label: RefinementTool; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
-  { label: "Smooth", icon: Droplet },
-  { label: "Relax", icon: Waves },
-  { label: "Inflate", icon: CirclePlus },
-  { label: "Flatten", icon: FoldHorizontal },
-  { label: "Pinch", icon: Minimize2 },
-  { label: "Grab", icon: Hand },
-  { label: "Fill Holes", icon: CircleDashed },
-  { label: "Remove Artifacts", icon: Trash2 },
-];
+import { SilhouetteEditor } from "./SilhouetteEditor";
 
 export function RefinementPanel() {
-  const s = useRefinement();
+  const s = useReconstruct();
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const coveragePct = s.mask
+    ? Math.round(
+        (s.mask.data.reduce((sum, v) => sum + (v >= 0.5 ? 1 : 0), 0) / s.mask.data.length) * 100,
+      )
+    : null;
 
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel">
+    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
       <div className="border-b border-line px-[16px] py-[14px]">
-        <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">MESH REFINEMENT</h1>
+        <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">REFINE MESH</h1>
       </div>
 
       <div className="scroll-thin flex-1 overflow-y-auto">
         <section className="border-b border-line px-[16px] py-[13px]">
-          <PanelSectionTitle>1. REFINEMENT TOOLS</PanelSectionTitle>
-          <div className="mt-[12px] grid grid-cols-2 gap-[8px]">
-            {TOOLS.map(({ label, icon: Icon }) => {
-              const selected = s.activeTool === label;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => s.setActiveTool(label)}
-                  className={cn(
-                    "flex h-[58px] flex-col items-center justify-center gap-[6px] rounded-[5px] border text-[11px] transition-colors",
-                    selected
-                      ? "border-accent-2/80 bg-accent/22 text-txt shadow-[inset_0_1px_0_oklch(1_0_0/0.06)]"
-                      : "border-line bg-surface text-txt-muted hover:border-line-strong hover:text-txt",
-                  )}
-                >
-                  <Icon
-                    className={cn("size-[15px]", selected ? "text-accent-2" : "text-txt-dim")}
-                    strokeWidth={1.7}
-                  />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="border-b border-line px-[16px] py-[13px]">
-          <PanelSectionTitle>2. BRUSH SETTINGS</PanelSectionTitle>
-          <div className="mt-[13px] space-y-[11px]">
-            <SliderControl
-              inline
-              label="Brush Size"
-              min={4}
-              max={120}
-              value={s.brushSize}
-              onChange={s.setBrushSize}
-              format={(v) => `${v} px`}
-              labelWidth={74}
-            />
-            <SliderControl
-              inline
-              label="Strength"
-              value={s.strength}
-              onChange={s.setStrength}
-              labelWidth={74}
-            />
-            <div className="flex items-center gap-[10px]">
-              <FieldLabel className="w-[74px] shrink-0">Falloff</FieldLabel>
-              <Select
-                label="Falloff"
-                value={s.falloff}
-                onChange={s.setFalloff}
-                options={["Smooth", "Linear", "Sharp", "Constant"]}
-                className="flex-1"
+          <PanelSectionTitle>1. PROJECT</PanelSectionTitle>
+          <div className="mt-[8px] aspect-[16/11] w-full overflow-hidden rounded-[5px] border border-line bg-surface">
+            {s.sourceImageUrl ? (
+              <img
+                src={s.sourceImageUrl}
+                alt="Current project source"
+                className="h-full w-full object-cover"
               />
-            </div>
-            <div className="flex items-center justify-between">
-              <FieldLabel>Symmetry X</FieldLabel>
-              <ToggleSwitch label="Symmetry X" checked={s.symmetryX} onChange={s.setSymmetryX} />
-            </div>
-            <div className="flex items-center justify-between">
-              <FieldLabel>Surface Only</FieldLabel>
-              <ToggleSwitch
-                label="Surface Only"
-                checked={s.surfaceOnly}
-                onChange={s.setSurfaceOnly}
-              />
-            </div>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-[14px] text-center text-[10.5px] text-txt-dim">
+                No project loaded
+              </div>
+            )}
           </div>
+          <p className="mt-[10px] truncate text-[11.5px] text-txt">{s.sourceFileName ?? "—"}</p>
+          <p className="mt-[2px] text-[10.5px] text-txt-dim">
+            {s.imageWidth ? `${s.imageWidth} × ${s.imageHeight}` : "—"}
+          </p>
+          <Link
+            to="/reconstruct"
+            search={s.projectId ? { project: s.projectId } : {}}
+            className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
+          >
+            <FolderOpen className="size-[13px]" />
+            Open Full Reconstruction
+          </Link>
         </section>
 
         <section className="px-[16px] py-[13px]">
-          <PanelSectionTitle>3. AUTOMATIC CLEANUP</PanelSectionTitle>
-          <div className="mt-[13px] space-y-[11px]">
-            <div className="flex items-center justify-between">
-              <FieldLabel>Remove Spikes</FieldLabel>
-              <ToggleSwitch
-                label="Remove Spikes"
-                checked={s.removeSpikes}
-                onChange={s.setRemoveSpikes}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <FieldLabel>Fix Non-Manifold</FieldLabel>
-              <ToggleSwitch
-                label="Fix Non-Manifold"
-                checked={s.fixNonManifold}
-                onChange={s.setFixNonManifold}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <FieldLabel>Close Small Holes</FieldLabel>
-              <ToggleSwitch
-                label="Close Small Holes"
-                checked={s.closeSmallHoles}
-                onChange={s.setCloseSmallHoles}
-              />
-            </div>
-            <div className="space-y-[7px]">
-              <FieldLabel>Quality</FieldLabel>
-              <SegmentedControl
-                options={["Fast", "Balanced", "Precise"] as const}
-                value={s.quality}
-                onChange={s.setQuality}
-              />
-            </div>
-          </div>
-
+          <PanelSectionTitle>2. SILHOUETTE</PanelSectionTitle>
+          <p className="mt-[8px] text-[10.5px] leading-[15px] text-txt-dim">
+            Manually touch up the automatic background removal — paint to add back missed parts of
+            the subject or erase leftover background, without regenerating the model.
+          </p>
+          <p className="mt-[9px] text-[11.5px] text-txt">
+            {coveragePct !== null ? `${coveragePct}% of image kept` : "—"}
+          </p>
           <button
             type="button"
-            onClick={s.runAutoRefine}
-            disabled={s.status === "running"}
-            className="mt-[15px] flex h-[38px] w-full items-center justify-center gap-[8px] rounded-[5px] text-[12.5px] font-medium text-white shadow-[0_4px_16px_-6px_var(--accent)] transition-opacity hover:opacity-95 disabled:opacity-60"
-            style={{ background: "var(--gradient-accent)" }}
+            onClick={() => setEditorOpen(true)}
+            disabled={!s.mask}
+            className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong disabled:opacity-50"
           >
-            <RefreshCw className={cn("size-[14px]", s.status === "running" && "animate-spin")} />
-            {s.status === "running" ? "Refining..." : "Run Auto Refine"}
+            <Paintbrush className="size-[13px]" />
+            Edit Silhouette
           </button>
-          <p className="mt-[9px] text-center text-[10.5px] text-txt-dim">
-            Estimated time: 45–90 sec
-          </p>
         </section>
       </div>
+
+      <SilhouetteEditor open={editorOpen} onOpenChange={setEditorOpen} />
     </aside>
   );
 }

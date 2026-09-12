@@ -14,8 +14,10 @@ import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ScenesRouteImport } from './routes/scenes'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TextureRouteImport } from './routes/texture'
@@ -45,6 +47,11 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReconstructRoute = ReconstructRouteImport.update({
   id: '/reconstruct',
   path: '/reconstruct',
@@ -53,6 +60,11 @@ const ReconstructRoute = ReconstructRouteImport.update({
 const RefineRoute = RefineRouteImport.update({
   id: '/refine',
   path: '/refine',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScenesRoute = ScenesRouteImport.update({
@@ -77,8 +89,10 @@ export interface FileRoutesByFullPath {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
@@ -89,8 +103,10 @@ export interface FileRoutesByTo {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
@@ -102,8 +118,10 @@ export interface FileRoutesById {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenes': typeof ScenesRoute
   '/settings': typeof SettingsRoute
   '/texture': typeof TextureRoute
@@ -116,8 +134,10 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/login'
     | '/reconstruct'
     | '/refine'
+    | '/reset-password'
     | '/scenes'
     | '/settings'
     | '/texture'
@@ -128,8 +148,10 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/login'
     | '/reconstruct'
     | '/refine'
+    | '/reset-password'
     | '/scenes'
     | '/settings'
     | '/texture'
@@ -140,8 +162,10 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/login'
     | '/reconstruct'
     | '/refine'
+    | '/reset-password'
     | '/scenes'
     | '/settings'
     | '/texture'
@@ -153,8 +177,10 @@ export interface RootRouteChildren {
   ExplorerRoute: typeof ExplorerRoute
   ExportRoute: typeof ExportRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ScenesRoute: typeof ScenesRoute
   SettingsRoute: typeof SettingsRoute
   TextureRoute: typeof TextureRoute
@@ -197,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reconstruct': {
       id: '/reconstruct'
       path: '/reconstruct'
@@ -209,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/refine'
       fullPath: '/refine'
       preLoaderRoute: typeof RefineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenes': {
@@ -241,8 +281,10 @@ const rootRouteChildren: RootRouteChildren = {
   ExplorerRoute: ExplorerRoute,
   ExportRoute: ExportRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ScenesRoute: ScenesRoute,
   SettingsRoute: SettingsRoute,
   TextureRoute: TextureRoute,

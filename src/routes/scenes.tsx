@@ -1,76 +1,175 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 
-import { ScenesConsoleDock } from "@/components/scenes/ScenesConsoleDock";
-import { ScenesPanel } from "@/components/scenes/ScenesPanel";
-import { ScenesProperties } from "@/components/scenes/ScenesProperties";
-import {
-  ScenesCameraViewport,
-  ScenesPerspectiveViewport,
-} from "@/components/scenes/ScenesViewports";
 import { AppShell } from "@/components/studio/AppShell";
-import { WorkspaceToolbar, type ViewportMode } from "@/components/studio/WorkspaceToolbar";
-import { ScenesProvider, useScenes } from "@/stores/scenesStore";
+import { ConsolePanel } from "@/components/studio/ConsolePanel";
+import { PropertiesPanel } from "@/components/studio/PropertiesPanel";
+import { OrthographicViewport } from "@/components/studio/Viewports";
+import { WorkspaceToolbar } from "@/components/studio/WorkspaceToolbar";
+import { CrystalPreview } from "@/components/export/CrystalPreview";
+import {
+  DEFAULT_SCENE_STAGING,
+  type CrystalMaterialSettings,
+  type SceneStagingSettings,
+} from "@/components/export/CrystalMeshViewer";
+import { ScenesPanel } from "@/components/scenes/ScenesPanel";
+import { projectStore } from "@/lib/projects";
+import {
+  RECONSTRUCTION_STEPS,
+  ReconstructProvider,
+  useReconstruct,
+  type ReconstructStatus,
+} from "@/stores/reconstructStore";
 
 export const Route = createFileRoute("/scenes")({
+  validateSearch: z.object({
+    project: z.string().optional(),
+  }),
   head: () => ({
     meta: [
-      { title: "DXF2OBJ — Scene Manager Workspace" },
+      { title: "DXF2OBJ — Scene Workspace" },
       {
         name: "description",
         content:
-          "Arrange the portrait scene: object hierarchy, transform gizmos, camera rigs, lighting presets and saved scene layouts.",
+          "Stage the crystal preview: toggle the bust, crystal block and pedestal, light the scene and jump to real camera view presets.",
       },
-      { property: "og:title", content: "DXF2OBJ — Scene Manager Workspace" },
+      { property: "og:title", content: "DXF2OBJ — Scene Workspace" },
       {
         property: "og:description",
-        content:
-          "Object hierarchy, transform gizmo, multi-camera previews and lighting presets for the crystal portrait scene.",
+        content: "Real lighting, object visibility and camera presets for the crystal preview.",
       },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ScenesPage,
+  component: () => (
+    <ReconstructProvider>
+      <ScenesPage />
+    </ReconstructProvider>
+  ),
 });
 
+const STATUS_LABEL: Record<ReconstructStatus, string> = {
+  idle: "Waiting for a project",
+  "loading-model": "Loading models…",
+  "removing-background": "Removing background…",
+  "estimating-depth": "Estimating depth…",
+  "building-mesh": "Building mesh…",
+  ready: "Ready",
+  error: "Error",
+};
+
+const RING_STATE: Record<ReconstructStatus, "idle" | "running" | "done"> = {
+  idle: "idle",
+  "loading-model": "running",
+  "removing-background": "running",
+  "estimating-depth": "running",
+  "building-mesh": "running",
+  ready: "done",
+  error: "idle",
+};
+
 function ScenesPage() {
-  return (
-    <ScenesProvider>
-      <ScenesWorkspace />
-    </ScenesProvider>
-  );
+  const { project } = Route.useSearch();
+  const { data: mostRecent, isLoading } = useQuery({
+    queryKey: ["most-recent-project"],
+    queryFn: () => projectStore.getMostRecent(),
+    enabled: !project,
+  });
+
+  const projectId = project ?? mostRecent?.id ?? null;
+
+  if (!project && isLoading) {
+    return (
+      <AppShell
+        toolbar={<WorkspaceToolbar />}
+        properties={<div className="h-full w-full shrink-0 bg-panel lg:border-l lg:border-line" />}
+        workspace={<div className="h-[200px] shrink-0 lg:h-auto lg:flex-1" />}
+      />
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <AppShell
+        toolbar={<WorkspaceToolbar />}
+        properties={<div className="h-full w-full shrink-0 bg-panel lg:border-l lg:border-line" />}
+        workspace={
+          <div className="flex flex-1 items-center justify-center rounded-[6px] border border-line bg-panel text-[11.5px] text-txt-dim">
+            No projects yet — reconstruct a photo first.
+          </div>
+        }
+      />
+    );
+  }
+
+  return <ScenesWorkspace projectId={projectId} />;
 }
 
-function ScenesWorkspace() {
-  const s = useScenes();
-  const [mode, setMode] = useState<ViewportMode>("Solid");
+function ScenesWorkspace({ projectId }: { projectId: string }) {
+  const {
+    logLines,
+    progress,
+    completedSteps,
+    status,
+    projectId: loadedProjectId,
+    loadProject,
+    sourceFileName,
+    resetTransform,
+  } = useReconstruct();
+
+  const [scene, setScene] = useState<SceneStagingSettings>(DEFAULT_SCENE_STAGING);
+  const [material] = useState<CrystalMaterialSettings>({ color: "#ffffff", clarity: 80 });
+  const [autoRotate, setAutoRotate] = useState(false);
+
+  useEffect(() => {
+    if (projectId !== loadedProjectId) {
+      void loadProject(projectId);
+    }
+  }, [projectId, loadedProjectId, loadProject]);
 
   return (
     <AppShell
-      status={s.statusLabel}
-      toolbar={
-        <WorkspaceToolbar
-          modes={["Solid", "Wireframe", "Lighting", "Gizmo"]}
-          mode={mode}
-          onModeChange={setMode}
-        />
-      }
-      properties={<ScenesProperties />}
+      toolbar={<WorkspaceToolbar />}
+      properties={<PropertiesPanel />}
+      projectName={sourceFileName?.replace(/\.[^.]+$/, "")}
+      projectId={loadedProjectId}
+      onResetTransform={status === "ready" ? resetTransform : undefined}
       workspace={
         <>
-          <ScenesPanel />
+          <ScenesPanel
+            scene={scene}
+            onSceneChange={(patch) => setScene((prev) => ({ ...prev, ...patch }))}
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-[8px]">
-            <div className="flex min-h-0 flex-1 gap-[8px]">
-              <ScenesPerspectiveViewport mode={mode} />
-              <div className="grid w-[300px] shrink-0 grid-cols-2 grid-rows-2 gap-[8px]">
-                <ScenesCameraViewport name="Camera 01" />
-                <ScenesCameraViewport name="Camera 02" />
-                <ScenesCameraViewport name="Turntable" />
-                <ScenesCameraViewport name="Top Rig" />
+            <div className="flex h-[420px] shrink-0 lg:h-[560px] flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
+              <CrystalPreview
+                material={material}
+                scene={scene}
+                autoRotate={autoRotate}
+                onToggleAutoRotate={() => setAutoRotate((v) => !v)}
+              />
+              <div className="grid h-[260px] shrink-0 lg:h-[320px] grid-rows-[28.5fr_28.5fr_43fr] border-t border-line xl:h-auto xl:w-[39%] xl:border-l xl:border-t-0">
+                <OrthographicViewport name="Front" gizmo="front" className="border-b border-line" />
+                <OrthographicViewport
+                  name="Three-Quarter"
+                  gizmo="right"
+                  className="border-b border-line"
+                />
+                <div className="grid grid-cols-2">
+                  <OrthographicViewport name="Depth Map" className="border-r border-line" />
+                  <OrthographicViewport name="Wireframe" />
+                </div>
               </div>
             </div>
-            <ScenesConsoleDock />
+            <ConsolePanel
+              lines={logLines}
+              progress={progress}
+              completedSteps={completedSteps}
+              steps={RECONSTRUCTION_STEPS}
+              statusLabel={STATUS_LABEL[status]}
+              ringState={RING_STATE[status]}
+            />
           </div>
         </>
       }

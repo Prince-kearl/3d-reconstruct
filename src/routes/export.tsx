@@ -1,76 +1,174 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 
-import { ExportConsoleDock } from "@/components/export/ExportConsoleDock";
-import { ExportPanel } from "@/components/export/ExportPanel";
-import { ExportProperties } from "@/components/export/ExportProperties";
-import {
-  ExportPerspectiveViewport,
-  ExportSecondaryViewport,
-} from "@/components/export/ExportViewports";
 import { AppShell } from "@/components/studio/AppShell";
-import { WorkspaceToolbar, type ViewportMode } from "@/components/studio/WorkspaceToolbar";
-import { ExportProvider, useExport } from "@/stores/exportStore";
+import { ConsolePanel } from "@/components/studio/ConsolePanel";
+import { PropertiesPanel } from "@/components/studio/PropertiesPanel";
+import { OrthographicViewport } from "@/components/studio/Viewports";
+import { WorkspaceToolbar } from "@/components/studio/WorkspaceToolbar";
+import { CrystalPreview } from "@/components/export/CrystalPreview";
+import type { CrystalMaterialSettings } from "@/components/export/CrystalMeshViewer";
+import { ExportPanel } from "@/components/export/ExportPanel";
+import { projectStore } from "@/lib/projects";
+import {
+  RECONSTRUCTION_STEPS,
+  ReconstructProvider,
+  useReconstruct,
+  type ReconstructStatus,
+} from "@/stores/reconstructStore";
 
 export const Route = createFileRoute("/export")({
+  validateSearch: z.object({
+    project: z.string().optional(),
+  }),
   head: () => ({
     meta: [
-      { title: "DXF2OBJ — Export & Crystal Fitting Workspace" },
+      { title: "DXF2OBJ — Export Workspace" },
       {
         name: "description",
         content:
-          "Export the finished portrait mesh to OBJ, STL, PLY, FBX, GLB or 3MF with crystal volume fitting, geometry checks and laser-ready output settings.",
+          "Preview the finished model as a rotatable 360° glass/crystal render, then export the real mesh to OBJ or GLB.",
       },
-      { property: "og:title", content: "DXF2OBJ — Export & Crystal Fitting Workspace" },
+      { property: "og:title", content: "DXF2OBJ — Export Workspace" },
       {
         property: "og:description",
-        content:
-          "Choose an export format, fit the crystal volume, run geometry checks and write laser-ready output files.",
+        content: "A 360° crystal preview of the real reconstructed model, with OBJ/GLB export.",
       },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ExportPage,
+  component: () => (
+    <ReconstructProvider>
+      <ExportPage />
+    </ReconstructProvider>
+  ),
 });
 
+const STATUS_LABEL: Record<ReconstructStatus, string> = {
+  idle: "Waiting for a project",
+  "loading-model": "Loading models…",
+  "removing-background": "Removing background…",
+  "estimating-depth": "Estimating depth…",
+  "building-mesh": "Building mesh…",
+  ready: "Ready",
+  error: "Error",
+};
+
+const RING_STATE: Record<ReconstructStatus, "idle" | "running" | "done"> = {
+  idle: "idle",
+  "loading-model": "running",
+  "removing-background": "running",
+  "estimating-depth": "running",
+  "building-mesh": "running",
+  ready: "done",
+  error: "idle",
+};
+
 function ExportPage() {
-  return (
-    <ExportProvider>
-      <ExportWorkspace />
-    </ExportProvider>
-  );
+  const { project } = Route.useSearch();
+  const { data: mostRecent, isLoading } = useQuery({
+    queryKey: ["most-recent-project"],
+    queryFn: () => projectStore.getMostRecent(),
+    enabled: !project,
+  });
+
+  const projectId = project ?? mostRecent?.id ?? null;
+
+  if (!project && isLoading) {
+    return (
+      <AppShell
+        toolbar={<WorkspaceToolbar />}
+        properties={<div className="h-full w-full shrink-0 bg-panel lg:border-l lg:border-line" />}
+        workspace={<div className="h-[200px] shrink-0 lg:h-auto lg:flex-1" />}
+      />
+    );
+  }
+
+  if (!projectId) {
+    return (
+      <AppShell
+        toolbar={<WorkspaceToolbar />}
+        properties={<div className="h-full w-full shrink-0 bg-panel lg:border-l lg:border-line" />}
+        workspace={
+          <div className="flex flex-1 items-center justify-center rounded-[6px] border border-line bg-panel text-[11.5px] text-txt-dim">
+            No projects yet — reconstruct a photo first.
+          </div>
+        }
+      />
+    );
+  }
+
+  return <ExportWorkspace projectId={projectId} />;
 }
 
-function ExportWorkspace() {
-  const s = useExport();
-  const [mode, setMode] = useState<ViewportMode>("Crystal Preview");
+function ExportWorkspace({ projectId }: { projectId: string }) {
+  const {
+    logLines,
+    progress,
+    completedSteps,
+    status,
+    projectId: loadedProjectId,
+    loadProject,
+    sourceFileName,
+    resetTransform,
+  } = useReconstruct();
+
+  const [material, setMaterial] = useState<CrystalMaterialSettings>({
+    color: "#ffffff",
+    clarity: 80,
+  });
+  const [autoRotate, setAutoRotate] = useState(true);
+
+  useEffect(() => {
+    if (projectId !== loadedProjectId) {
+      void loadProject(projectId);
+    }
+  }, [projectId, loadedProjectId, loadProject]);
 
   return (
     <AppShell
-      status={s.statusLabel}
-      toolbar={
-        <WorkspaceToolbar
-          modes={["Crystal Preview", "Solid", "Wireframe", "Bounds"]}
-          mode={mode}
-          onModeChange={setMode}
-        />
-      }
-      properties={<ExportProperties />}
+      toolbar={<WorkspaceToolbar />}
+      properties={<PropertiesPanel />}
+      projectName={sourceFileName?.replace(/\.[^.]+$/, "")}
+      projectId={loadedProjectId}
+      onResetTransform={status === "ready" ? resetTransform : undefined}
       workspace={
         <>
-          <ExportPanel />
+          <ExportPanel
+            material={material}
+            onMaterialChange={(patch) => setMaterial((prev) => ({ ...prev, ...patch }))}
+            autoRotate={autoRotate}
+            onAutoRotateChange={setAutoRotate}
+          />
           <div className="flex min-w-0 flex-1 flex-col gap-[8px]">
-            <div className="flex min-h-0 flex-1 gap-[8px]">
-              <ExportPerspectiveViewport mode={mode} />
-              <div className="grid w-[300px] shrink-0 grid-cols-2 grid-rows-2 gap-[8px]">
-                <ExportSecondaryViewport name="Crystal Preview" />
-                <ExportSecondaryViewport name="Mesh Check" />
-                <ExportSecondaryViewport name="Bounds" />
-                <ExportSecondaryViewport name="Base" />
+            <div className="flex h-[420px] shrink-0 lg:h-[560px] flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
+              <CrystalPreview
+                material={material}
+                autoRotate={autoRotate}
+                onToggleAutoRotate={() => setAutoRotate((v) => !v)}
+              />
+              <div className="grid h-[260px] shrink-0 lg:h-[320px] grid-rows-[28.5fr_28.5fr_43fr] border-t border-line xl:h-auto xl:w-[39%] xl:border-l xl:border-t-0">
+                <OrthographicViewport name="Front" gizmo="front" className="border-b border-line" />
+                <OrthographicViewport
+                  name="Three-Quarter"
+                  gizmo="right"
+                  className="border-b border-line"
+                />
+                <div className="grid grid-cols-2">
+                  <OrthographicViewport name="Depth Map" className="border-r border-line" />
+                  <OrthographicViewport name="Wireframe" />
+                </div>
               </div>
             </div>
-            <ExportConsoleDock />
+            <ConsolePanel
+              lines={logLines}
+              progress={progress}
+              completedSteps={completedSteps}
+              steps={RECONSTRUCTION_STEPS}
+              statusLabel={STATUS_LABEL[status]}
+              ringState={RING_STATE[status]}
+            />
           </div>
         </>
       }

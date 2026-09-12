@@ -1,55 +1,65 @@
 import { LayoutGrid, List, Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
 
-import { RECENT_PROJECTS, type ProjectStatus } from "@/data/launcherMock";
+import type { ProjectStatus, ProjectSummary } from "@/lib/projects";
+import { useAuth } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { IconButton } from "@/components/studio/primitives";
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
-  Ready: "border-ok/50 bg-ok/15 text-ok-2",
-  Refining: "border-accent/50 bg-accent/15 text-accent-2",
-  Texturing: "border-lime/50 bg-lime/12 text-lime-2",
-  Exported: "border-line-strong bg-surface-2 text-txt-muted",
-  Error: "border-axis-x/50 bg-axis-x/12 text-axis-x",
+  processing: "border-accent/50 bg-accent/15 text-accent-2",
+  completed: "border-ok/50 bg-ok/15 text-ok-2",
+  failed: "border-destructive/50 bg-destructive/15 text-destructive",
 };
 
-const FILTERS = ["All", "Ready", "In Progress", "Errors"] as const;
+const FILTERS = ["All", "Completed", "Processing", "Failed"] as const;
 
-export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
+export function RecentProjects({
+  projects,
+  onNewProject,
+}: {
+  projects: ProjectSummary[];
+  onNewProject: () => void;
+}) {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
   const [view, setView] = useState<"grid" | "list">("grid");
 
+  const mostRecent = projects[0];
+
   const items = useMemo(
     () =>
-      RECENT_PROJECTS.filter((p) => {
+      projects.filter((p) => {
         const q = query.trim().toLowerCase();
-        if (q && !p.name.toLowerCase().includes(q) && !p.path.toLowerCase().includes(q))
-          return false;
-        if (filter === "Ready") return p.status === "Ready";
-        if (filter === "Errors") return p.status === "Error";
-        if (filter === "In Progress") return p.status === "Refining" || p.status === "Texturing";
+        if (q && !p.name.toLowerCase().includes(q)) return false;
+        if (filter === "Completed") return p.status === "completed";
+        if (filter === "Processing") return p.status === "processing";
+        if (filter === "Failed") return p.status === "failed";
         return true;
       }),
-    [query, filter],
+    [projects, query, filter],
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-[8px]">
+    <div className="flex min-w-0 flex-1 flex-col gap-[8px] lg:min-h-0">
       <section
         className="relative shrink-0 overflow-hidden rounded-[6px] border border-line bg-panel px-[18px] py-[16px]"
         style={{ backgroundImage: "var(--viewport-bg)" }}
       >
-        <div className="flex items-start gap-[16px]">
+        <div className="flex flex-col items-start gap-[16px] sm:flex-row">
           <div className="min-w-0 flex-1">
-            <p className="text-[10.5px] uppercase tracking-[0.14em] text-accent-2">DXF2OBJ Studio</p>
-            <h1 className="mt-[6px] text-[20px] font-semibold tracking-[-0.01em] text-txt">
-              Welcome back, Emmanuella
+            <p className="text-[10.5px] uppercase tracking-[0.14em] text-accent-2">
+              DXF2OBJ Studio
+            </p>
+            <h1 className="mt-[6px] break-words text-[20px] font-semibold tracking-[-0.01em] text-txt">
+              Welcome back{user?.email ? `, ${user.email}` : ""}
             </h1>
             <p className="mt-[5px] max-w-[520px] text-[11.5px] leading-[18px] text-txt-muted">
-              Turn portrait photography into laser-ready 3D crystal engravings. Pick up a recent
-              project or start a new reconstruction from a template.
+              Turn a photo into a rotatable pseudo-3D depth relief. Pick up a recent project or
+              start a new reconstruction.
             </p>
             <div className="mt-[12px] flex items-center gap-[8px]">
               <button
@@ -60,33 +70,27 @@ export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
               >
                 <Sparkles className="size-[13px]" /> New Project
               </button>
-              <Link
-                to="/reconstruct"
-                className="flex h-[30px] items-center rounded-[5px] border border-line bg-surface px-[14px] text-[11.5px] text-txt-muted hover:text-txt"
-              >
-                Continue Portrait Project
-              </Link>
+              {mostRecent ? (
+                <Link
+                  to="/reconstruct"
+                  search={{ project: mostRecent.id }}
+                  className="flex h-[30px] items-center rounded-[5px] border border-line bg-surface px-[14px] text-[11.5px] text-txt-muted hover:text-txt"
+                >
+                  Continue "{mostRecent.name}"
+                </Link>
+              ) : null}
             </div>
           </div>
-          <dl className="grid shrink-0 grid-cols-3 gap-[8px]">
-            {[
-              ["Projects", "6"],
-              ["Jobs today", "14"],
-              ["Laser queue", "2"],
-            ].map(([k, v]) => (
-              <div
-                key={k}
-                className="w-[92px] rounded-[5px] border border-line bg-surface/80 px-[10px] py-[8px]"
-              >
-                <dt className="text-[9.5px] text-txt-dim">{k}</dt>
-                <dd className="mt-[2px] text-[16px] font-semibold text-txt">{v}</dd>
-              </div>
-            ))}
+          <dl className="grid shrink-0 grid-cols-1 gap-[8px]">
+            <div className="w-[92px] rounded-[5px] border border-line bg-surface/80 px-[10px] py-[8px]">
+              <dt className="text-[9.5px] text-txt-dim">Projects</dt>
+              <dd className="mt-[2px] text-[16px] font-semibold text-txt">{projects.length}</dd>
+            </div>
           </dl>
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-line bg-panel">
+      <section className="flex h-[420px] shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:h-auto lg:min-h-0 lg:flex-1">
         <div className="flex h-[42px] shrink-0 items-center gap-[8px] border-b border-line px-[12px]">
           <h2 className="text-[12px] font-semibold text-txt">Recent Projects</h2>
           <div className="ml-[6px] flex items-center gap-[3px]">
@@ -117,10 +121,20 @@ export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
               className="w-full min-w-0 bg-transparent text-[11px] text-txt outline-none placeholder:text-txt-dim"
             />
           </div>
-          <IconButton label="Grid view" size={26} active={view === "grid"} onClick={() => setView("grid")}>
+          <IconButton
+            label="Grid view"
+            size={26}
+            active={view === "grid"}
+            onClick={() => setView("grid")}
+          >
             <LayoutGrid className="size-[14px]" />
           </IconButton>
-          <IconButton label="List view" size={26} active={view === "list"} onClick={() => setView("list")}>
+          <IconButton
+            label="List view"
+            size={26}
+            active={view === "list"}
+            onClick={() => setView("list")}
+          >
             <List className="size-[14px]" />
           </IconButton>
         </div>
@@ -128,13 +142,21 @@ export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-[10px]">
           {items.length === 0 ? (
             <p className="py-[40px] text-center text-[11.5px] text-txt-dim">
-              No projects match “{query}”.
+              {projects.length === 0
+                ? "No projects yet — start a new reconstruction."
+                : `No projects match "${query}".`}
             </p>
           ) : (
-            <div className={cn(view === "grid" ? "grid grid-cols-3 gap-[10px]" : "space-y-[6px]")}>
+            <div
+              className={cn(
+                view === "grid"
+                  ? "grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-3"
+                  : "space-y-[6px]",
+              )}
+            >
               {items.map((p) => (
                 <article
-                  key={p.name}
+                  key={p.id}
                   className={cn(
                     "rounded-[6px] border border-line bg-surface p-[11px] transition-colors hover:border-line-strong hover:bg-surface-2/70",
                     view === "list" && "flex items-center gap-[12px]",
@@ -142,7 +164,9 @@ export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-[8px]">
-                      <h3 className="min-w-0 truncate text-[12px] font-medium text-txt">{p.name}</h3>
+                      <h3 className="min-w-0 truncate text-[12px] font-medium text-txt">
+                        {p.name}
+                      </h3>
                       <span
                         className={cn(
                           "shrink-0 rounded-[3px] border px-[6px] py-[1px] text-[9px] font-semibold",
@@ -152,25 +176,16 @@ export function RecentProjects({ onNewProject }: { onNewProject: () => void }) {
                         {p.status}
                       </span>
                     </div>
-                    <p className="mt-[4px] truncate font-mono text-[9.5px] text-txt-dim">{p.path}</p>
-                    <div className="mt-[9px] h-[3px] w-full rounded-full bg-line-strong">
-                      <div
-                        className="h-[3px] rounded-full"
-                        style={{
-                          width: `${p.progress}%`,
-                          background:
-                            p.status === "Error" ? "var(--axis-x)" : "var(--gradient-accent)",
-                        }}
-                      />
-                    </div>
-                    <div className="mt-[7px] flex items-center justify-between text-[10px] text-txt-muted">
-                      <span className="truncate">{p.stage}</span>
-                      <span className="shrink-0 text-txt-dim">{p.size}</span>
-                    </div>
-                    <p className="mt-[3px] text-[9.5px] text-txt-dim">Opened {p.opened}</p>
+                    <p className="mt-[7px] text-[10px] text-txt-muted">
+                      {p.vertexCount ? `${p.vertexCount.toLocaleString()} vertices` : "—"}
+                    </p>
+                    <p className="mt-[3px] text-[9.5px] text-txt-dim">
+                      Updated {formatDistanceToNow(p.updatedAt, { addSuffix: true })}
+                    </p>
                   </div>
                   <Link
                     to="/reconstruct"
+                    search={{ project: p.id }}
                     className={cn(
                       "mt-[10px] flex h-[26px] items-center justify-center rounded-[4px] border border-line bg-panel text-[11px] text-txt-muted hover:text-txt",
                       view === "list" ? "mt-0 w-[86px] shrink-0" : "w-full",

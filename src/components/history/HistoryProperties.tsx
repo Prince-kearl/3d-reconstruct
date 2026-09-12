@@ -1,9 +1,12 @@
-import { GitBranch, RotateCcw } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
-import { CollapsibleSection, FieldLabel, Select, SliderControl, ToggleSwitch } from "@/components/studio/primitives";
-import { DIFF_STATS, VERSIONS } from "@/data/historyMock";
+import {
+  CollapsibleSection,
+  FieldLabel,
+  Select,
+  SliderControl,
+  ToggleSwitch,
+} from "@/components/studio/primitives";
 import { cn } from "@/lib/utils";
 import { useHistory } from "@/stores/historyStore";
 
@@ -19,12 +22,15 @@ function Row({ label, value }: { label: string; value: string }) {
 export function HistoryProperties() {
   const s = useHistory();
   const [tab, setTab] = useState<"Properties" | "Log">("Properties");
-  const current = VERSIONS.find((v) => v.id === s.compareId) ?? VERSIONS[4]!;
-  const ids = VERSIONS.map((v) => v.id);
+  const current = s.versions.find((v) => v.id === s.compareId) ?? s.versions[s.versions.length - 1];
+  const ids = s.versions.map((v) => v.id);
 
   return (
-    <aside className="flex w-[352px] shrink-0 flex-col border-l border-line bg-panel">
-      <div role="tablist" className="flex h-[44px] shrink-0 items-center border-b border-line px-[8px]">
+    <aside className="flex h-full w-full shrink-0 flex-col bg-panel lg:border-l lg:border-line">
+      <div
+        role="tablist"
+        className="flex h-[44px] shrink-0 items-center border-b border-line px-[8px]"
+      >
         {(["Properties", "Log"] as const).map((t) => (
           <button
             key={t}
@@ -51,15 +57,19 @@ export function HistoryProperties() {
             {s.logs.join("\n")}
           </pre>
         </div>
+      ) : !current ? (
+        <p className="px-[16px] py-[14px] text-[11px] text-txt-dim">
+          {s.isLoading ? "Loading history…" : "No events yet."}
+        </p>
       ) : (
         <div className="scroll-thin flex flex-1 flex-col overflow-y-auto">
           <CollapsibleSection title="Version Info">
             <dl className="space-y-[9px]">
-              <Row label="Version" value={current.id} />
               <Row label="Name" value={current.name} />
               <Row label="Stage" value={current.stage} />
-              <Row label="Created" value={current.time} />
+              <Row label="Time" value={current.time} />
               <Row label="Vertices" value={current.verts} />
+              <Row label="Note" value={current.note} />
             </dl>
           </CollapsibleSection>
 
@@ -67,50 +77,49 @@ export function HistoryProperties() {
             <div className="space-y-[10px]">
               <div className="flex items-center gap-[8px]">
                 <FieldLabel className="w-[70px] shrink-0 pl-[6px] text-[11.5px]">Before</FieldLabel>
-                <Select label="Before version" value={s.baseId} options={ids} onChange={s.setBaseId} className="flex-1" />
+                <Select
+                  label="Before version"
+                  value={s.baseId}
+                  options={ids}
+                  onChange={s.setBaseId}
+                  className="flex-1"
+                />
               </div>
               <div className="flex items-center gap-[8px]">
                 <FieldLabel className="w-[70px] shrink-0 pl-[6px] text-[11.5px]">After</FieldLabel>
-                <Select label="After version" value={s.compareId} options={ids} onChange={s.setCompareId} className="flex-1" />
+                <Select
+                  label="After version"
+                  value={s.compareId}
+                  options={ids}
+                  onChange={s.setCompareId}
+                  className="flex-1"
+                />
               </div>
-              <SliderControl inline label="Split" value={s.split} onChange={s.setSplit} labelWidth={70} />
+              <SliderControl
+                inline
+                label="Split"
+                value={s.split}
+                onChange={s.setSplit}
+                labelWidth={70}
+              />
               <div className="flex items-center justify-between">
                 <FieldLabel className="pl-[6px] text-[11.5px]">Highlight changes</FieldLabel>
-                <ToggleSwitch label="Highlight changes" checked={s.showDiff} onChange={s.setShowDiff} />
+                <ToggleSwitch
+                  label="Highlight changes"
+                  checked={s.showDiff}
+                  onChange={s.setShowDiff}
+                />
               </div>
             </div>
           </CollapsibleSection>
 
           <CollapsibleSection title="Diff Stats">
             <dl className="space-y-[9px]">
-              {DIFF_STATS.map((d) => (
+              {s.diffStats.map((d) => (
                 <Row key={d.label} label={d.label} value={d.value} />
               ))}
             </dl>
           </CollapsibleSection>
-
-          <div className="mt-auto space-y-[8px] p-[14px]">
-            <button
-              type="button"
-              onClick={() => toast.success(`Branched from ${current.id}`)}
-              className="flex h-[34px] w-full items-center justify-center gap-[8px] rounded-[5px] border border-line bg-surface-2 text-[12px] text-txt hover:border-line-strong"
-            >
-              <GitBranch className="size-[14px]" />
-              Branch from Version
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                s.setStatusLabel("Ready");
-                toast.success("Version restored", { description: `${current.id} — ${current.name}` });
-              }}
-              style={{ background: "var(--gradient-lime)" }}
-              className="flex h-[38px] w-full items-center justify-center gap-[8px] rounded-[5px] text-[12.5px] font-semibold text-app"
-            >
-              <RotateCcw className="size-[15px]" />
-              Restore Version
-            </button>
-          </div>
         </div>
       )}
     </aside>

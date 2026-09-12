@@ -1,20 +1,19 @@
-import { Check, RotateCcw, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { LogOut, RotateCcw, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { FieldLabel, SegmentedControl, SliderControl } from "@/components/studio/primitives";
+import { projectStore, type ProjectStatus } from "@/lib/projects";
 import {
-  ACCENT_SWATCHES,
-  CONFIG_LOG,
-  SETTINGS_HEALTH,
-} from "@/data/settingsMock";
-import {
-  FieldLabel,
-  SegmentedControl,
-  Select,
-  SliderControl,
-  ToggleSwitch,
-} from "@/components/studio/primitives";
+  FACTORY_DEFAULTS,
+  getReconstructionDefaults,
+  setReconstructionDefaults,
+  type ReconstructionDefaults,
+} from "@/lib/settings/reconstructionDefaults";
+import { getProfile, updateProfile } from "@/lib/supabase/profile";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/authStore";
 
 function Card({
   title,
@@ -26,388 +25,271 @@ function Card({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-[6px] border border-line bg-surface px-[12px] py-[11px]", className)}>
+    <section
+      className={cn("rounded-[6px] border border-line bg-surface px-[12px] py-[11px]", className)}
+    >
       <h3 className="text-[12px] font-semibold text-txt">{title}</h3>
       <div className="mt-[10px] space-y-[10px]">{children}</div>
     </section>
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-[10px]">
-      <FieldLabel>{label}</FieldLabel>
-      {children}
+    <div className="flex items-center justify-between gap-2">
+      <dt className="text-[11.5px] text-txt-muted">{label}</dt>
+      <dd className="text-[11.5px] text-txt">{value}</dd>
     </div>
   );
 }
 
-function HealthRing({ value }: { value: number }) {
-  const r = 34;
-  const c = 2 * Math.PI * r;
+function useWebGpuAvailable(): boolean {
+  const [available, setAvailable] = useState(false);
+  useEffect(() => {
+    setAvailable(typeof navigator !== "undefined" && "gpu" in navigator);
+  }, []);
+  return available;
+}
+
+function AccountSection() {
+  const { user, signOut } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => (user ? getProfile(user.id) : null),
+    enabled: Boolean(user),
+  });
+  const [displayName, setDisplayName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDisplayName(profile?.display_name ?? "");
+  }, [profile?.display_name]);
+
+  const save = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await updateProfile(user.id, { display_name: displayName.trim() || null });
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Display name updated");
+    } catch {
+      toast.error("Could not update display name");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="relative size-[100px]">
-      <svg viewBox="0 0 80 80" className="size-full -rotate-90">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--line-strong)" strokeWidth="4" />
-        <circle
-          cx="40"
-          cy="40"
-          r={r}
-          fill="none"
-          stroke="var(--ok-2)"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - value / 100)}
-        />
-      </svg>
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center"
-        role="progressbar"
-        aria-label="Settings health"
-        aria-valuenow={value}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <span className="text-[19px] font-semibold text-txt">{value}%</span>
-        <span className="text-[10px] text-txt-muted">Valid</span>
+    <Card title="Account">
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel>Email</FieldLabel>
+        <span className="text-[11.5px] text-txt">{user?.email ?? "—"}</span>
       </div>
-    </div>
+      <div className="flex items-center gap-[8px]">
+        <FieldLabel className="w-[100px] shrink-0">Display Name</FieldLabel>
+        <input
+          aria-label="Display name"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          className="h-[30px] flex-1 rounded-[4px] border border-line bg-panel px-[10px] text-[11.5px] text-txt outline-none focus-visible:border-accent"
+        />
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="flex h-[30px] shrink-0 items-center gap-[6px] rounded-[4px] border border-line bg-panel px-[12px] text-[11.5px] text-txt hover:border-line-strong disabled:opacity-50"
+        >
+          <Save className="size-[13px]" />
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        className="mt-[4px] flex h-[32px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-destructive/40 text-[11.5px] text-destructive hover:bg-destructive/10"
+      >
+        <LogOut className="size-[13px]" />
+        Sign Out
+      </button>
+    </Card>
   );
 }
 
-const LOG_TABS = ["Configuration Log", "Warnings", "Preferences File"] as const;
+function ReconstructionDefaultsSection() {
+  const [defaults, setDefaults] = useState<ReconstructionDefaults>(() =>
+    getReconstructionDefaults(),
+  );
+
+  const update = (patch: Partial<ReconstructionDefaults>) => {
+    setDefaults((prev) => {
+      const next = { ...prev, ...patch };
+      setReconstructionDefaults(next);
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setDefaults(FACTORY_DEFAULTS);
+    setReconstructionDefaults(FACTORY_DEFAULTS);
+    toast.success("Reset to recommended defaults");
+  };
+
+  return (
+    <Card title="Reconstruction Defaults">
+      <p className="text-[10.5px] leading-[15px] text-txt-dim">
+        Where new reconstructions start from — changing these doesn't affect projects you've already
+        created.
+      </p>
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel className="w-[100px] shrink-0">Quality</FieldLabel>
+        <SegmentedControl
+          options={["Fast", "Balanced", "High"] as const}
+          value={defaults.quality}
+          onChange={(v) => update({ quality: v })}
+          className="w-[200px]"
+        />
+      </div>
+      <SliderControl
+        inline
+        label="Depth Intensity"
+        value={defaults.detail}
+        onChange={(v) => update({ detail: v })}
+        labelWidth={110}
+      />
+      <SliderControl
+        inline
+        label="Smoothing"
+        value={defaults.smoothing}
+        onChange={(v) => update({ smoothing: v })}
+        labelWidth={110}
+      />
+      <SliderControl
+        inline
+        label="Edge Feather"
+        value={defaults.edgeFeather}
+        onChange={(v) => update({ edgeFeather: v })}
+        labelWidth={110}
+      />
+      <SliderControl
+        inline
+        label="Volume"
+        value={defaults.volume}
+        onChange={(v) => update({ volume: v })}
+        labelWidth={110}
+      />
+      <button
+        type="button"
+        onClick={reset}
+        className="mt-[4px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line text-[11.5px] text-txt-muted hover:bg-surface-2 hover:text-txt"
+      >
+        <RotateCcw className="size-[13px]" />
+        Reset to Recommended
+      </button>
+    </Card>
+  );
+}
+
+const STATUS_LABEL: Record<ProjectStatus, string> = {
+  completed: "Completed",
+  processing: "Processing",
+  failed: "Failed",
+};
+
+function StorageSection() {
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => projectStore.list(),
+  });
+
+  const counts: Record<ProjectStatus, number> = { completed: 0, processing: 0, failed: 0 };
+  let totalVertices = 0;
+  for (const p of projects) {
+    counts[p.status]++;
+    totalVertices += p.vertexCount;
+  }
+
+  return (
+    <Card title="Storage">
+      {isLoading ? (
+        <p className="text-[11px] text-txt-dim">Loading…</p>
+      ) : (
+        <dl className="space-y-[7px]">
+          <Row label="Total Projects" value={String(projects.length)} />
+          {(Object.keys(counts) as ProjectStatus[]).map((status) => (
+            <Row key={status} label={STATUS_LABEL[status]} value={String(counts[status])} />
+          ))}
+          <Row label="Total Vertices Generated" value={totalVertices.toLocaleString()} />
+        </dl>
+      )}
+      <p className="mt-[4px] text-[10.5px] leading-[15px] text-txt-dim">
+        Source photos, depth maps, masks and exported models are stored in your account only — other
+        users can never see them.
+      </p>
+    </Card>
+  );
+}
+
+function PrivacySection() {
+  const { user, signOut } = useAuth();
+  return (
+    <Card title="Privacy & Data">
+      <p className="text-[11.5px] leading-[17px] text-txt-muted">
+        Background removal and depth estimation run entirely in your browser using WebGPU/WASM —
+        your photo is never sent to an external AI service for processing.
+      </p>
+      <p className="text-[11.5px] leading-[17px] text-txt-muted">
+        What's saved to your account: the source photo, depth map, silhouette mask, thumbnail and
+        any exported model file — each scoped privately to your user ID.
+      </p>
+      <Row label="Signed in as" value={user?.email ?? "—"} />
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        className="mt-[4px] flex h-[32px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-destructive/40 text-[11.5px] text-destructive hover:bg-destructive/10"
+      >
+        <LogOut className="size-[13px]" />
+        Sign Out
+      </button>
+    </Card>
+  );
+}
+
+function AboutSection() {
+  const webgpu = useWebGpuAvailable();
+  return (
+    <Card title="About DXF2OBJ">
+      <p className="text-[11.5px] leading-[17px] text-txt-muted">
+        Turn a portrait photo into a rotatable pseudo-3D relief, entirely client-side — depth
+        estimation, background removal and mesh generation all run in your browser.
+      </p>
+      <dl className="space-y-[7px] pt-[4px]">
+        <Row label="WebGPU" value={webgpu ? "Available" : "Unavailable (using CPU/WASM)"} />
+        <Row label="Platform" value={navigator.platform || "—"} />
+        <Row label="Language" value={navigator.language} />
+      </dl>
+    </Card>
+  );
+}
 
 export function GeneralSettings({ section }: { section: string }) {
-  const [language, setLanguage] = useState("English (UK)");
-  const [startup, setStartup] = useState("Reconstruct");
-  const [openLast, setOpenLast] = useState(true);
-  const [welcome, setWelcome] = useState(false);
-  const [updates, setUpdates] = useState(true);
-  const [confirmExit, setConfirmExit] = useState(true);
-  const [theme, setTheme] = useState<"Dark" | "System" | "Light">("Dark");
-  const [density, setDensity] = useState<"Compact" | "Comfortable">("Compact");
-  const [accent, setAccent] = useState(0);
-  const [uiScale, setUiScale] = useState(100);
-  const [transparency, setTransparency] = useState(0);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const [monoConsole, setMonoConsole] = useState(true);
-  const [engine, setEngine] = useState("ECON (Human)");
-  const [quality, setQuality] = useState<"Fast" | "Balanced" | "High">("Balanced");
-  const [units, setUnits] = useState("Centimeters");
-  const [exportFormat, setExportFormat] = useState("OBJ");
-  const [texRes, setTexRes] = useState("2K");
-  const [crystal, setCrystal] = useState("Rectangular Block");
-  const [watertight, setWatertight] = useState(true);
-  const [identity, setIdentity] = useState(true);
-  const [autosave, setAutosave] = useState(true);
-  const [interval, setIntervalValue] = useState("2 minutes");
-  const [maxVersions, setMaxVersions] = useState("25");
-  const [saveBefore, setSaveBefore] = useState(true);
-  const [snapshots, setSnapshots] = useState(true);
-  const [logTab, setLogTab] = useState<(typeof LOG_TABS)[number]>("Configuration Log");
-
   return (
     <div className="scroll-thin flex min-w-0 flex-1 flex-col gap-[10px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px]">
       <div>
-        <h2 className="text-[15px] font-semibold text-txt">{section} Settings</h2>
-        <p className="mt-[3px] text-[11.5px] text-txt-muted">
-          Configure your DXF2OBJ workspace and project defaults.
-        </p>
+        <h2 className="text-[15px] font-semibold text-txt">{section}</h2>
       </div>
 
-      <div className="grid grid-cols-[1fr_1.35fr] gap-[10px]">
-        <Card title="Application">
-          <Row label="Language">
-            <Select
-              label="Language"
-              value={language}
-              options={["English (UK)", "English (US)", "Deutsch", "Français"]}
-              onChange={setLanguage}
-              className="w-[104px]"
-            />
-          </Row>
-          <Row label="Startup Workspace">
-            <Select
-              label="Startup workspace"
-              value={startup}
-              options={["Reconstruct", "Refine", "Texture", "Explorer"]}
-              onChange={setStartup}
-              className="w-[104px]"
-            />
-          </Row>
-          <Row label="Open Last Project">
-            <ToggleSwitch label="Open last project" checked={openLast} onChange={setOpenLast} />
-          </Row>
-          <Row label="Show Welcome Screen">
-            <ToggleSwitch label="Show welcome screen" checked={welcome} onChange={setWelcome} />
-          </Row>
-          <Row label="Check for Updates">
-            <ToggleSwitch label="Check for updates" checked={updates} onChange={setUpdates} />
-          </Row>
-          <Row label="Confirm Before Exit">
-            <ToggleSwitch label="Confirm before exit" checked={confirmExit} onChange={setConfirmExit} />
-          </Row>
-        </Card>
-
-        <Card title="Appearance">
-          <div className="grid grid-cols-[1fr_190px] gap-[14px]">
-            <div className="space-y-[10px]">
-              <Row label="Theme">
-                <SegmentedControl
-                  options={["Dark", "System", "Light"] as const}
-                  value={theme}
-                  onChange={setTheme}
-                  className="w-[164px]"
-                />
-              </Row>
-              <Row label="Interface Density">
-                <SegmentedControl
-                  options={["Compact", "Comfortable"] as const}
-                  value={density}
-                  onChange={setDensity}
-                  className="w-[164px]"
-                />
-              </Row>
-              <Row label="Accent Color">
-                <span className="flex w-[164px] items-center gap-[8px]">
-                  {ACCENT_SWATCHES.map((c, i) => (
-                    <button
-                      key={c}
-                      type="button"
-                      role="radio"
-                      aria-checked={accent === i}
-                      aria-label={`Accent colour ${i + 1}`}
-                      onClick={() => setAccent(i)}
-                      style={{ background: c }}
-                      className={cn(
-                        "size-[15px] rounded-full",
-                        accent === i ? "ring-2 ring-txt ring-offset-2 ring-offset-surface" : null,
-                      )}
-                    />
-                  ))}
-                </span>
-              </Row>
-              <SliderControl inline label="UI Scale" value={uiScale} onChange={setUiScale} min={70} max={130} labelWidth={106} />
-              <SliderControl
-                inline
-                label="Panel Transparency"
-                value={transparency}
-                onChange={setTransparency}
-                labelWidth={106}
-              />
-              <Row label="Reduce Motion">
-                <ToggleSwitch label="Reduce motion" checked={reduceMotion} onChange={setReduceMotion} />
-              </Row>
-              <Row label="Monospace Console">
-                <ToggleSwitch label="Monospace console" checked={monoConsole} onChange={setMonoConsole} />
-              </Row>
-            </div>
-
-            <div className="rounded-[5px] border border-line bg-app p-[8px]">
-              <p className="text-[10.5px] text-txt-muted">Interface Preview</p>
-              <div className="mt-[7px] overflow-hidden rounded-[4px] border border-line">
-                <div className="flex h-[16px] items-center gap-[4px] bg-panel px-[5px] text-[7px] text-txt-dim">
-                  DXF2OBJ
-                  <span className="rounded bg-surface-2 px-[3px] text-[6px]">BETA</span>
-                  <span className="ml-auto">— □ ✕</span>
-                </div>
-                <div className="flex" style={{ opacity: 1 - transparency / 200 }}>
-                  <div className="flex w-[14px] flex-col items-center gap-[4px] bg-panel py-[4px]">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} className="size-[5px] rounded-sm bg-surface-2" />
-                    ))}
-                  </div>
-                  <div className="flex-1 space-y-[3px] bg-surface p-[5px]">
-                    <span className="block h-[3px] w-3/4 rounded bg-line-strong" />
-                    <span className="block h-[3px] w-1/2 rounded bg-line-strong" />
-                    <span
-                      className="block h-[7px] w-full rounded"
-                      style={{ background: ACCENT_SWATCHES[accent] }}
-                    />
-                    <p className="pt-[3px] font-mono text-[6px] leading-[9px] text-txt-dim">
-                      [10:48:01] Session initialized
-                      <br />
-                      [10:48:02] GPU detected: RTX 3060
-                    </p>
-                  </div>
-                </div>
-                <div
-                  style={{ background: "var(--gradient-lime)" }}
-                  className="m-[5px] rounded py-[3px] text-center text-[6.5px] font-semibold text-app"
-                >
-                  Export Diagnostic Report
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <Card title="Project Defaults">
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-[10px]">
-          <Row label="Default Engine">
-            <Select
-              label="Default engine"
-              value={engine}
-              options={["ECON (Human)", "PIFuHD", "Photogrammetry"]}
-              onChange={setEngine}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Texture Resolution">
-            <Select
-              label="Texture resolution"
-              value={texRes}
-              options={["1K", "2K", "4K"]}
-              onChange={setTexRes}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Default Quality">
-            <SegmentedControl
-              options={["Fast", "Balanced", "High"] as const}
-              value={quality}
-              onChange={setQuality}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Crystal Preset">
-            <Select
-              label="Crystal preset"
-              value={crystal}
-              options={["Rectangular Block", "Cube", "Heart", "Rounded Block"]}
-              onChange={setCrystal}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Units">
-            <Select
-              label="Units"
-              value={units}
-              options={["Centimeters", "Millimeters", "Inches"]}
-              onChange={setUnits}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Watertight">
-            <ToggleSwitch label="Watertight" checked={watertight} onChange={setWatertight} />
-          </Row>
-          <Row label="Default Export Format">
-            <Select
-              label="Default export format"
-              value={exportFormat}
-              options={["OBJ", "STL", "PLY", "GLB"]}
-              onChange={setExportFormat}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Preserve Identity">
-            <ToggleSwitch label="Preserve identity" checked={identity} onChange={setIdentity} />
-          </Row>
-        </div>
-      </Card>
-
-      <Card title="Autosave & Recovery">
-        <div className="grid grid-cols-2 gap-x-[18px] gap-y-[10px]">
-          <Row label="Enable Autosave">
-            <ToggleSwitch label="Enable autosave" checked={autosave} onChange={setAutosave} />
-          </Row>
-          <Row label="Save Before Processing">
-            <ToggleSwitch label="Save before processing" checked={saveBefore} onChange={setSaveBefore} />
-          </Row>
-          <Row label="Autosave Interval">
-            <Select
-              label="Autosave interval"
-              value={interval}
-              options={["1 minute", "2 minutes", "5 minutes", "10 minutes"]}
-              onChange={setIntervalValue}
-              className="w-[180px]"
-            />
-          </Row>
-          <Row label="Recovery Snapshots">
-            <ToggleSwitch label="Recovery snapshots" checked={snapshots} onChange={setSnapshots} />
-          </Row>
-          <Row label="Maximum Versions">
-            <input
-              aria-label="Maximum versions"
-              value={maxVersions}
-              onChange={(e) => setMaxVersions(e.target.value)}
-              className="h-[30px] w-[180px] rounded-[4px] border border-line bg-surface px-[10px] text-[11.5px] text-txt outline-none focus-visible:border-accent"
-            />
-          </Row>
-        </div>
-      </Card>
-
-      <div className="flex h-[46px] shrink-0 items-center gap-[10px] rounded-[6px] border border-line bg-surface px-[12px]">
-        <ShieldCheck className="size-[15px] text-ok" />
-        <span className="text-[11.5px] text-txt-muted">Recovery protection is active</span>
-        <button
-          type="button"
-          onClick={() => toast("Section reset to defaults")}
-          className="ml-auto flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-panel px-[12px] text-[11.5px] text-txt-muted hover:text-txt"
-        >
-          <RotateCcw className="size-[13px]" />
-          Reset Section
-        </button>
-        <button
-          type="button"
-          onClick={() => toast.success("Settings applied")}
-          style={{ background: "var(--gradient-accent)" }}
-          className="h-[28px] rounded-[4px] px-[14px] text-[11.5px] font-semibold text-white"
-        >
-          Apply Settings
-        </button>
-      </div>
-
-      <div className="flex h-[168px] shrink-0 gap-[10px]">
-        <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-line bg-surface">
-          <div className="flex h-[32px] shrink-0 items-center gap-[2px] border-b border-line px-[6px]">
-            {LOG_TABS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={logTab === t}
-                onClick={() => setLogTab(t)}
-                className={cn(
-                  "relative h-full px-[12px] text-[11px]",
-                  logTab === t ? "bg-accent/12 text-accent-2" : "text-txt-muted hover:text-txt",
-                )}
-              >
-                {t}
-                {logTab === t ? (
-                  <span className="absolute inset-x-[6px] -bottom-px h-[2px] rounded-t bg-accent-2" />
-                ) : null}
-              </button>
-            ))}
-          </div>
-          <pre className="scroll-thin flex-1 overflow-y-auto px-[12px] py-[8px] font-mono text-[11px] leading-[19px] text-txt-muted">
-            {logTab === "Configuration Log"
-              ? CONFIG_LOG.join("\n")
-              : logTab === "Warnings"
-                ? "[10:48:06]  No warnings in current configuration"
-                : "{\n  \"theme\": \"dark\",\n  \"units\": \"cm\"\n}"}
-          </pre>
-        </section>
-        <section className="flex w-[356px] shrink-0 gap-[10px] rounded-[6px] border border-line bg-surface px-[14px] py-[11px]">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[12px] font-semibold text-txt">Settings Health</h3>
-            <ul className="mt-[8px] space-y-[5px]">
-              {SETTINGS_HEALTH.map((h) => (
-                <li key={h} className="flex items-center gap-[8px] text-[11px] text-txt-muted">
-                  <Check className="size-[13px] text-ok" strokeWidth={2.4} />
-                  {h}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex w-[128px] shrink-0 flex-col items-center justify-center gap-[7px]">
-            <HealthRing value={100} />
-            <span className="text-[10.5px] text-txt-dim">Saved just now</span>
-          </div>
-        </section>
-      </div>
+      {section === "Account" ? (
+        <AccountSection />
+      ) : section === "Reconstruction Defaults" ? (
+        <ReconstructionDefaultsSection />
+      ) : section === "Storage" ? (
+        <StorageSection />
+      ) : section === "Privacy & Data" ? (
+        <PrivacySection />
+      ) : (
+        <AboutSection />
+      )}
     </div>
   );
 }

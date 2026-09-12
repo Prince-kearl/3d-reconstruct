@@ -1,182 +1,141 @@
-import { Box, Camera, Eye, EyeOff, Gem, Layers, Lightbulb, Plus, Square } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { FolderOpen } from "lucide-react";
 
-import {
-  FieldLabel,
-  PanelSectionTitle,
-  SegmentedControl,
-  Select,
-  SliderControl,
-  ToggleSwitch,
-} from "@/components/studio/primitives";
-import { GIZMO_MODES, LIGHT_PRESETS, SAVED_SCENES, SCENE_TREE } from "@/data/scenesMock";
+import { PanelSectionTitle, SliderControl, ToggleSwitch } from "@/components/studio/primitives";
 import { cn } from "@/lib/utils";
-import { useScenes } from "@/stores/scenesStore";
+import { useReconstruct } from "@/stores/reconstructStore";
+import type { SceneStagingSettings } from "@/components/export/CrystalMeshViewer";
 
-const TYPE_ICONS = {
-  Mesh: Box,
-  Volume: Gem,
-  Base: Square,
-  Ground: Layers,
-  Light: Lightbulb,
-  Camera: Camera,
-} as const;
+const BACKDROPS: { label: string; color: string }[] = [
+  { label: "Slate", color: "#4a5064" },
+  { label: "Charcoal", color: "#26282f" },
+  { label: "Midnight", color: "#1c2438" },
+  { label: "Warm Grey", color: "#5a5148" },
+  { label: "Ivory", color: "#8a8578" },
+];
 
-export function ScenesPanel() {
-  const s = useScenes();
+export function ScenesPanel({
+  scene,
+  onSceneChange,
+}: {
+  scene: SceneStagingSettings;
+  onSceneChange: (patch: Partial<SceneStagingSettings>) => void;
+}) {
+  const s = useReconstruct();
 
   return (
-    <aside className="scroll-thin flex w-[300px] shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px]">
-      <div>
-        <div className="flex items-center justify-between">
-          <PanelSectionTitle>Scene Manager</PanelSectionTitle>
-          <button
-            type="button"
-            aria-label="Add object"
-            title="Add object"
-            className="flex size-[22px] items-center justify-center rounded-[4px] text-txt-dim hover:bg-surface-2 hover:text-txt"
+    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
+      <div className="border-b border-line px-[16px] py-[14px]">
+        <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">SCENE WORKSPACE</h1>
+      </div>
+
+      <div className="scroll-thin flex-1 overflow-y-auto">
+        <section className="border-b border-line px-[16px] py-[13px]">
+          <PanelSectionTitle>1. PROJECT</PanelSectionTitle>
+          <div className="mt-[8px] aspect-[16/11] w-full overflow-hidden rounded-[5px] border border-line bg-surface">
+            {s.sourceImageUrl ? (
+              <img
+                src={s.sourceImageUrl}
+                alt="Current project source"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-[14px] text-center text-[10.5px] text-txt-dim">
+                No project loaded
+              </div>
+            )}
+          </div>
+          <p className="mt-[10px] truncate text-[11.5px] text-txt">{s.sourceFileName ?? "—"}</p>
+          <p className="mt-[2px] text-[10.5px] text-txt-dim">
+            {s.imageWidth ? `${s.imageWidth} × ${s.imageHeight}` : "—"}
+          </p>
+          <Link
+            to="/reconstruct"
+            search={s.projectId ? { project: s.projectId } : {}}
+            className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
           >
-            <Plus className="size-[14px]" />
-          </button>
-        </div>
-        <ul className="mt-[10px] space-y-[2px]">
-          {SCENE_TREE.map((node) => {
-            const Icon = TYPE_ICONS[node.type];
-            const selected = s.selectedId === node.id;
-            const isHidden = s.hidden.includes(node.id);
-            return (
-              <li key={node.id}>
-                <div
+            <FolderOpen className="size-[13px]" />
+            Open Full Reconstruction
+          </Link>
+        </section>
+
+        <section className="border-b border-line px-[16px] py-[13px]">
+          <PanelSectionTitle>2. SCENE OBJECTS</PanelSectionTitle>
+          <div className="mt-[11px] space-y-[10px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] text-txt-muted">Bust</span>
+              <ToggleSwitch
+                label="Show bust"
+                checked={scene.showBust}
+                onChange={(v) => onSceneChange({ showBust: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] text-txt-muted">Crystal Block</span>
+              <ToggleSwitch
+                label="Show crystal block"
+                checked={scene.showCrystal}
+                onChange={(v) => onSceneChange({ showCrystal: v })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] text-txt-muted">Pedestal</span>
+              <ToggleSwitch
+                label="Show pedestal"
+                checked={scene.showBase}
+                onChange={(v) => onSceneChange({ showBase: v })}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="px-[16px] py-[13px]">
+          <PanelSectionTitle>3. LIGHTING</PanelSectionTitle>
+          <div className="mt-[13px] space-y-[11px]">
+            <SliderControl
+              inline
+              label="Key Light"
+              value={scene.keyLight}
+              onChange={(v) => onSceneChange({ keyLight: v })}
+            />
+            <SliderControl
+              inline
+              label="Fill Light"
+              value={scene.fillLight}
+              onChange={(v) => onSceneChange({ fillLight: v })}
+            />
+            <SliderControl
+              inline
+              label="Ambient"
+              value={scene.ambient}
+              onChange={(v) => onSceneChange({ ambient: v })}
+            />
+          </div>
+
+          <div className="mt-[15px]">
+            <span className="block text-[11px] text-txt-muted">Backdrop</span>
+            <div className="mt-[8px] flex gap-[8px]">
+              {BACKDROPS.map((b) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  title={b.label}
+                  aria-label={b.label}
+                  aria-pressed={scene.backdrop === b.color}
+                  onClick={() => onSceneChange({ backdrop: b.color })}
                   className={cn(
-                    "flex items-center gap-[7px] rounded-[4px] px-[7px] py-[5px] transition-colors",
-                    selected ? "bg-accent/15" : "hover:bg-surface-2/70",
+                    "size-[26px] shrink-0 rounded-full border-2 transition-transform",
+                    scene.backdrop === b.color
+                      ? "scale-110 border-accent-2"
+                      : "border-line hover:scale-105",
                   )}
-                  style={{ paddingLeft: 7 + node.depth * 14 }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => s.setSelectedId(node.id)}
-                    className="flex min-w-0 flex-1 items-center gap-[7px] text-left"
-                  >
-                    <Icon
-                      className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")}
-                    />
-                    <span
-                      className={cn(
-                        "truncate text-[11.5px]",
-                        selected ? "text-txt" : isHidden ? "text-txt-dim/60" : "text-txt-muted",
-                      )}
-                    >
-                      {node.name}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`${isHidden ? "Show" : "Hide"} ${node.name}`}
-                    title={isHidden ? "Show" : "Hide"}
-                    onClick={() => s.toggleHidden(node.id)}
-                    className="text-txt-dim hover:text-txt"
-                  >
-                    {isHidden ? (
-                      <EyeOff className="size-[12px]" />
-                    ) : (
-                      <Eye className="size-[12px]" />
-                    )}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  style={{ background: b.color }}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
-
-      <div className="space-y-[10px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>Transform Gizmo</PanelSectionTitle>
-        <SegmentedControl options={GIZMO_MODES} value={s.gizmo} onChange={s.setGizmo} />
-        <SliderControl
-          inline
-          label="Rotate Y"
-          min={-180}
-          max={180}
-          value={s.rotY}
-          onChange={s.setRotY}
-          format={(v) => `${v}°`}
-        />
-        <SliderControl
-          inline
-          label="Scale"
-          min={20}
-          max={200}
-          value={s.scale}
-          onChange={s.setScale}
-        />
-        <div className="flex items-center justify-between">
-          <FieldLabel className="text-[11.5px]">Show grid</FieldLabel>
-          <ToggleSwitch label="Show grid" checked={s.showGrid} onChange={s.setShowGrid} />
-        </div>
-      </div>
-
-      <div className="space-y-[10px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>Lighting</PanelSectionTitle>
-        <Select
-          label="Light preset"
-          value={s.lightPreset}
-          options={LIGHT_PRESETS}
-          onChange={s.setLightPreset}
-        />
-        <SliderControl
-          inline
-          label="Intensity"
-          value={s.intensity}
-          onChange={s.setIntensity}
-        />
-        <SliderControl inline label="Ambient" value={s.ambient} onChange={s.setAmbient} />
-        <div className="flex items-center justify-between">
-          <FieldLabel className="text-[11.5px]">Shadows</FieldLabel>
-          <ToggleSwitch label="Shadows" checked={s.shadows} onChange={s.setShadows} />
-        </div>
-      </div>
-
-      <div className="space-y-[8px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>Saved Scenes</PanelSectionTitle>
-        <div className="grid grid-cols-2 gap-[7px]">
-          {SAVED_SCENES.map((sc) => {
-            const selected = s.activeScene === sc.name;
-            return (
-              <button
-                key={sc.name}
-                type="button"
-                onClick={() => s.setActiveScene(sc.name)}
-                className={cn(
-                  "flex h-[62px] flex-col items-start justify-end gap-[2px] rounded-[5px] border p-[8px] text-left transition-colors",
-                  selected
-                    ? "border-accent/70 bg-accent/15"
-                    : "border-line bg-surface hover:bg-surface-2",
-                )}
-              >
-                <span
-                  className={cn(
-                    "text-[11px] font-medium",
-                    selected ? "text-accent-2" : "text-txt-muted",
-                  )}
-                >
-                  {sc.name}
-                </span>
-                <span className="text-[9.5px] text-txt-dim">{sc.meta}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => s.setStatusLabel("Scene saved")}
-        style={{ background: "var(--gradient-accent)" }}
-        className="mt-auto flex h-[38px] shrink-0 items-center justify-center gap-[8px] rounded-[5px] text-[12.5px] font-semibold text-white shadow-[0_6px_18px_-8px_var(--accent)]"
-      >
-        <Layers className="size-[15px]" />
-        Save Scene
-      </button>
     </aside>
   );
 }

@@ -1,11 +1,5 @@
-import {
-  FolderOpen,
-  History,
-  Import,
-  Plus,
-  RotateCcw,
-  Lightbulb,
-} from "lucide-react";
+import { FolderOpen, History, Import, Lightbulb, Plus, RotateCcw } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 import { LAUNCHER_TIPS } from "@/data/launcherMock";
 import { cn } from "@/lib/utils";
@@ -16,21 +10,42 @@ export function LauncherQuickActions({
   onNewProject,
   onImport,
   onRecover,
+  projectCount,
+  mostRecentProjectId,
 }: {
   onNewProject: () => void;
   onImport: () => void;
   onRecover: () => void;
+  projectCount: number;
+  mostRecentProjectId: string | null;
 }) {
+  const navigate = useNavigate();
+
   const actions = [
     { label: "New Project", hint: "Ctrl+N", primary: true, onClick: onNewProject },
-    { label: "Open Project", hint: "Ctrl+O", primary: false, onClick: () => {} },
+    {
+      label: "Open Project",
+      hint: "Ctrl+O",
+      primary: false,
+      onClick: () => void navigate({ to: "/explorer" }),
+    },
     { label: "Import Assets", hint: "Ctrl+I", primary: false, onClick: onImport },
-    { label: "Open Last Session", hint: "Ctrl+L", primary: false, onClick: () => {} },
+    {
+      label: "Open Last Session",
+      hint: "Ctrl+L",
+      primary: false,
+      onClick: () =>
+        void navigate(
+          mostRecentProjectId
+            ? { to: "/reconstruct", search: { project: mostRecentProjectId } }
+            : { to: "/reconstruct" },
+        ),
+    },
     { label: "Recover Autosave", hint: "", primary: false, onClick: onRecover },
   ];
 
   return (
-    <aside className="scroll-thin flex w-[248px] shrink-0 flex-col overflow-y-auto rounded-[6px] border border-line bg-panel">
+    <aside className="scroll-thin flex w-full shrink-0 flex-col overflow-y-auto rounded-[6px] border border-line bg-panel lg:w-[248px]">
       <div className="border-b border-line px-[14px] py-[11px]">
         <h2 className="text-[12px] font-semibold text-txt">Quick Actions</h2>
         <p className="mt-[3px] text-[10.5px] text-txt-dim">Start or resume work</p>
@@ -63,17 +78,10 @@ export function LauncherQuickActions({
       <div className="border-b border-line px-[14px] py-[11px]">
         <h3 className="text-[11px] font-semibold text-txt">Workspace</h3>
         <dl className="mt-[8px] space-y-[6px] text-[10.5px]">
-          {[
-            ["Projects", "6"],
-            ["Disk used", "782 MB"],
-            ["Autosaves", "10 kept"],
-            ["Engine", "ECON v1.8"],
-          ].map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between">
-              <dt className="text-txt-dim">{k}</dt>
-              <dd className="text-txt">{v}</dd>
-            </div>
-          ))}
+          <div className="flex items-center justify-between">
+            <dt className="text-txt-dim">Projects</dt>
+            <dd className="text-txt">{projectCount}</dd>
+          </div>
         </dl>
       </div>
       <div className="px-[14px] py-[11px]">

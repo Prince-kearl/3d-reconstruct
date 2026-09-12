@@ -1,16 +1,20 @@
 import { GitCompare, Clock } from "lucide-react";
 
-import { PanelSectionTitle, SliderControl, ToggleSwitch, FieldLabel } from "@/components/studio/primitives";
-import { HISTORY_FILTERS, VERSIONS } from "@/data/historyMock";
+import {
+  PanelSectionTitle,
+  SliderControl,
+  ToggleSwitch,
+  FieldLabel,
+} from "@/components/studio/primitives";
 import { cn } from "@/lib/utils";
-import { useHistory } from "@/stores/historyStore";
+import { HISTORY_FILTERS, useHistory } from "@/stores/historyStore";
 
 export function HistoryPanel() {
   const s = useHistory();
-  const list = VERSIONS.filter((v) => s.filter === "All" || v.stage === s.filter);
+  const list = s.versions.filter((v) => s.filter === "All" || v.stage === s.filter);
 
   return (
-    <aside className="scroll-thin flex w-[300px] shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px]">
+    <aside className="scroll-thin flex w-full shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px] lg:w-[300px]">
       <div>
         <PanelSectionTitle>History Explorer</PanelSectionTitle>
         <div className="mt-[10px] flex flex-wrap gap-[5px]">
@@ -33,54 +37,60 @@ export function HistoryPanel() {
         </div>
       </div>
 
-      <ul className="space-y-[6px] border-t border-line pt-[12px]">
-        {list.map((v) => {
-          const isBase = s.baseId === v.id;
-          const isCompare = s.compareId === v.id;
-          return (
-            <li key={v.id}>
-              <div
-                className={cn(
-                  "rounded-[5px] border px-[9px] py-[8px] transition-colors",
-                  isBase || isCompare
-                    ? "border-accent/60 bg-accent/12"
-                    : "border-line bg-surface hover:bg-surface-2",
-                )}
-              >
-                <div className="flex items-center gap-[6px]">
-                  <Clock className="size-[12px] text-txt-dim" />
-                  <span className="font-mono text-[10.5px] text-txt-dim">{v.id}</span>
-                  <span className="truncate text-[11.5px] text-txt">{v.name}</span>
-                  <span className="ml-auto font-mono text-[10px] text-txt-dim">{v.time}</span>
+      {list.length === 0 ? (
+        <p className="border-t border-line pt-[12px] text-[11px] text-txt-dim">
+          {s.isLoading ? "Loading history…" : "No events yet."}
+        </p>
+      ) : (
+        <ul className="space-y-[6px] border-t border-line pt-[12px]">
+          {list.map((v) => {
+            const isBase = s.baseId === v.id;
+            const isCompare = s.compareId === v.id;
+            return (
+              <li key={v.id}>
+                <div
+                  className={cn(
+                    "rounded-[5px] border px-[9px] py-[8px] transition-colors",
+                    isBase || isCompare
+                      ? "border-accent/60 bg-accent/12"
+                      : "border-line bg-surface hover:bg-surface-2",
+                  )}
+                >
+                  <div className="flex items-center gap-[6px]">
+                    <Clock className="size-[12px] text-txt-dim" />
+                    <span className="font-mono text-[10.5px] text-txt-dim">{v.id}</span>
+                    <span className="truncate text-[11.5px] text-txt">{v.name}</span>
+                    <span className="ml-auto font-mono text-[10px] text-txt-dim">{v.time}</span>
+                  </div>
+                  <p className="mt-[4px] text-[10px] text-txt-dim">{v.note}</p>
+                  <div className="mt-[6px] flex gap-[5px]">
+                    <button
+                      type="button"
+                      onClick={() => s.setBaseId(v.id)}
+                      className={cn(
+                        "h-[22px] flex-1 rounded-[4px] text-[10px] transition-colors",
+                        isBase ? "bg-accent/25 text-accent-2" : "bg-surface-2 text-txt-muted",
+                      )}
+                    >
+                      Before
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => s.setCompareId(v.id)}
+                      className={cn(
+                        "h-[22px] flex-1 rounded-[4px] text-[10px] transition-colors",
+                        isCompare ? "bg-accent/25 text-accent-2" : "bg-surface-2 text-txt-muted",
+                      )}
+                    >
+                      After
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-[4px] text-[10px] text-txt-dim">{v.note}</p>
-                <div className="mt-[6px] flex gap-[5px]">
-                  <button
-                    type="button"
-                    onClick={() => s.setBaseId(v.id)}
-                    className={cn(
-                      "h-[22px] flex-1 rounded-[4px] text-[10px] transition-colors",
-                      isBase ? "bg-accent/25 text-accent-2" : "bg-surface-2 text-txt-muted",
-                    )}
-                  >
-                    Before
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => s.setCompareId(v.id)}
-                    className={cn(
-                      "h-[22px] flex-1 rounded-[4px] text-[10px] transition-colors",
-                      isCompare ? "bg-accent/25 text-accent-2" : "bg-surface-2 text-txt-muted",
-                    )}
-                  >
-                    After
-                  </button>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <div className="space-y-[10px] border-t border-line pt-[12px]">
         <PanelSectionTitle>Comparison</PanelSectionTitle>

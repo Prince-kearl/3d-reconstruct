@@ -7,13 +7,15 @@ export function IconButton({
   label,
   active,
   onClick,
+  disabled,
   children,
   className,
   size = 28,
 }: {
   label: string;
   active?: boolean;
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
+  disabled?: boolean | undefined;
   children: ReactNode;
   className?: string;
   size?: number;
@@ -25,9 +27,10 @@ export function IconButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
+      disabled={disabled}
       style={{ width: size, height: size }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-[4px] transition-colors",
+        "inline-flex shrink-0 items-center justify-center rounded-[4px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         active
           ? "bg-accent/20 text-accent-2"
           : "text-txt-dim hover:bg-surface-2 hover:text-txt-muted",
@@ -40,9 +43,7 @@ export function IconButton({
 }
 
 export function PanelSectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="text-[11px] font-semibold tracking-[0.06em] text-txt">{children}</h2>
-  );
+  return <h2 className="text-[11px] font-semibold tracking-[0.06em] text-txt">{children}</h2>;
 }
 
 export function FieldLabel({ children, className }: { children: ReactNode; className?: string }) {
@@ -65,10 +66,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="radiogroup"
-      className={cn(
-        "grid gap-1 rounded-[5px] border border-line bg-surface p-[3px]",
-        className,
-      )}
+      className={cn("grid gap-1 rounded-[5px] border border-line bg-surface p-[3px]", className)}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((opt) => {
@@ -157,10 +155,7 @@ export function SliderControl({
           {label}
         </label>
         {track}
-        <span
-          style={{ width: valueWidth }}
-          className="shrink-0 text-right text-[11px] text-txt"
-        >
+        <span style={{ width: valueWidth }} className="shrink-0 text-right text-[11px] text-txt">
           {display}
         </span>
       </div>
@@ -276,7 +271,12 @@ export function NumberField({
 export function LockToggle() {
   const [locked, setLocked] = useState(true);
   return (
-    <IconButton label="Lock scale ratio" active={locked} onClick={() => setLocked(!locked)} size={22}>
+    <IconButton
+      label="Lock scale ratio"
+      active={locked}
+      onClick={() => setLocked(!locked)}
+      size={22}
+    >
       <Lock className="size-[13px]" />
     </IconButton>
   );

@@ -1,14 +1,14 @@
 import { Check, Maximize2 } from "lucide-react";
 import { useState } from "react";
 
-import { CONSOLE_LINES, PROGRESS_STEPS } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
 const TABS = ["Console", "Logs", "Jobs"] as const;
 
-function ProgressRing({ value }: { value: number }) {
+function ProgressRing({ value, state }: { value: number; state: "idle" | "running" | "done" }) {
   const r = 34;
   const c = 2 * Math.PI * r;
+  const label = state === "done" ? "Completed" : state === "running" ? "Running" : "Idle";
   return (
     <div className="relative size-[94px]">
       <svg viewBox="0 0 80 80" className="size-full -rotate-90">
@@ -27,9 +27,7 @@ function ProgressRing({ value }: { value: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-[21px] font-semibold leading-none text-txt">{value}%</span>
-        <span className="mt-[3px] text-[9.5px] text-txt-muted">
-          {value === 100 ? "Completed" : "Running"}
-        </span>
+        <span className="mt-[3px] text-[9.5px] text-txt-muted">{label}</span>
       </div>
     </div>
   );
@@ -39,16 +37,22 @@ export function ConsolePanel({
   lines,
   progress,
   completedSteps,
+  steps,
+  statusLabel,
+  ringState,
 }: {
   lines: string[];
   progress: number;
   completedSteps: number;
+  steps: readonly string[];
+  statusLabel: string;
+  ringState: "idle" | "running" | "done";
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Console");
 
   return (
-    <div className="flex h-[195px] shrink-0 gap-[8px]">
-      <section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-line bg-panel">
+    <div className="flex shrink-0 flex-col gap-[8px] xl:h-[195px] xl:flex-row">
+      <section className="flex h-[160px] min-w-0 shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:flex-1">
         <div className="flex h-[32px] shrink-0 items-center gap-[2px] border-b border-line px-[6px]">
           {TABS.map((t) => (
             <button
@@ -80,23 +84,25 @@ export function ConsolePanel({
         <div className="scroll-thin flex-1 overflow-y-auto px-[12px] py-[9px]">
           {tab === "Console" ? (
             <pre className="font-mono text-[10.5px] leading-[17.5px] text-txt-muted">
-              {lines.join("\n")}
+              {lines.length ? lines.join("\n") : "No output yet."}
+            </pre>
+          ) : tab === "Logs" ? (
+            <pre className="font-mono text-[10.5px] leading-[17.5px] text-txt-dim">
+              {lines.length ? lines.join("\n") : "No logs yet."}
             </pre>
           ) : (
             <pre className="font-mono text-[10.5px] leading-[17.5px] text-txt-dim">
-              {tab === "Logs"
-                ? "[10:24:30] session.start engine=econ device=cuda:0"
-                : "[10:24:34] job#4812 reconstruct — completed in 03:47"}
+              {`job#1 reconstruct — ${statusLabel}`}
             </pre>
           )}
         </div>
       </section>
 
-      <section className="flex w-[292px] shrink-0 gap-[8px] overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px]">
+      <section className="flex shrink-0 gap-[8px] overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px] xl:w-[292px]">
         <div className="min-w-0 flex-1 pt-[1px]">
           <h2 className="text-[12px] font-semibold text-txt">Reconstruction Progress</h2>
           <ul className="mt-[10px] space-y-[7px]">
-            {PROGRESS_STEPS.map((step, i) => {
+            {steps.map((step, i) => {
               const done = i < completedSteps;
               return (
                 <li key={step} className="flex items-center gap-[8px]">
@@ -113,8 +119,10 @@ export function ConsolePanel({
           </ul>
         </div>
         <div className="flex w-[104px] shrink-0 flex-col items-center justify-center gap-[10px] pb-[2px]">
-          <ProgressRing value={progress} />
-          <span className="font-mono text-[11px] text-txt-muted">03:47</span>
+          <ProgressRing value={progress} state={ringState} />
+          <span className="max-w-full truncate px-[4px] text-[11px] text-txt-muted">
+            {statusLabel}
+          </span>
         </div>
       </section>
     </div>

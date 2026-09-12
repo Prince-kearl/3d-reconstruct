@@ -1,35 +1,20 @@
-import {
-  Box,
-  Clock,
-  FolderClosed,
-  Info,
-  Keyboard,
-  Monitor,
-  Palette,
-  RefreshCw,
-  Search,
-  Settings as SettingsIcon,
-  ShieldCheck,
-  Gauge,
-  MoreVertical,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Gauge, HardDrive, Info, Search, ShieldCheck, User } from "lucide-react";
 import { useState } from "react";
 
-import { SETTINGS_SECTIONS } from "@/data/settingsMock";
+import { getProfile } from "@/lib/supabase/profile";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/authStore";
 
-const ICONS = [
-  SettingsIcon,
-  Palette,
-  Box,
-  Monitor,
-  Gauge,
-  FolderClosed,
-  Clock,
-  ShieldCheck,
-  Keyboard,
-  Info,
-];
+export const SETTINGS_SECTIONS = [
+  "Account",
+  "Reconstruction Defaults",
+  "Storage",
+  "Privacy & Data",
+  "About",
+] as const;
+
+const ICONS = [User, Gauge, HardDrive, ShieldCheck, Info];
 
 export function SettingsNav({
   section,
@@ -43,8 +28,17 @@ export function SettingsNav({
     s.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
+  const { user } = useAuth();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => (user ? getProfile(user.id) : null),
+    enabled: Boolean(user),
+  });
+  const displayName = profile?.display_name ?? user?.email ?? "—";
+  const initial = displayName[0]?.toUpperCase() ?? "?";
+
   return (
-    <aside className="scroll-thin flex w-[236px] shrink-0 flex-col gap-[12px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[12px] py-[12px]">
+    <aside className="scroll-thin flex w-full shrink-0 flex-col gap-[12px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[12px] py-[12px] lg:w-[236px]">
       <h2 className="text-[11px] font-semibold tracking-[0.08em] text-txt-muted">SETTINGS</h2>
       <div className="flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
         <Search className="size-[13px] shrink-0 text-txt-dim" />
@@ -88,23 +82,14 @@ export function SettingsNav({
           PROFILE
         </h3>
         <div className="flex h-[46px] items-center gap-[9px] rounded-[5px] border border-line bg-surface px-[9px]">
-          <span className="flex size-[28px] items-center justify-center rounded-full bg-accent/25 text-[11px] font-semibold text-accent-2">
-            PK
+          <span className="flex size-[28px] shrink-0 items-center justify-center rounded-full bg-accent/25 text-[11px] font-semibold text-accent-2">
+            {initial}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[11.5px] text-txt">Portrait Workstation</span>
-            <span className="block text-[10px] text-txt-dim">Local Profile</span>
+            <span className="block truncate text-[11.5px] text-txt">{displayName}</span>
+            <span className="block text-[10px] text-txt-dim">Signed in</span>
           </span>
-          <MoreVertical className="size-[13px] text-txt-dim" />
         </div>
-        <button
-          type="button"
-          className="mt-[10px] flex h-[32px] w-full items-center justify-center gap-[7px] rounded-[5px] border border-accent/50 bg-accent/12 text-[11.5px] text-accent-2 hover:bg-accent/20"
-        >
-          <RefreshCw className="size-[13px]" />
-          Sync Preferences
-        </button>
-        <p className="mt-[10px] text-center text-[10.5px] text-txt-dim">Settings saved locally</p>
       </div>
     </aside>
   );

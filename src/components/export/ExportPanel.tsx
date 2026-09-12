@@ -1,116 +1,113 @@
-import { Download } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { FolderOpen } from "lucide-react";
 
-import {
-  FieldLabel,
-  NumberField,
-  PanelSectionTitle,
-  Select,
-  SliderControl,
-  ToggleSwitch,
-} from "@/components/studio/primitives";
-import { CRYSTAL_PRESETS, EXPORT_FORMATS, UNITS } from "@/data/exportMock";
+import { PanelSectionTitle, SliderControl, ToggleSwitch } from "@/components/studio/primitives";
 import { cn } from "@/lib/utils";
-import { useExport } from "@/stores/exportStore";
+import { useReconstruct } from "@/stores/reconstructStore";
+import type { CrystalMaterialSettings } from "./CrystalMeshViewer";
 
-export function ExportPanel() {
-  const s = useExport();
+const TINTS: { label: string; color: string }[] = [
+  { label: "Clear", color: "#ffffff" },
+  { label: "Amber", color: "#ffb066" },
+  { label: "Rose", color: "#ff8fa8" },
+  { label: "Sapphire", color: "#6fa8ff" },
+  { label: "Emerald", color: "#6fffb0" },
+];
+
+export function ExportPanel({
+  material,
+  onMaterialChange,
+  autoRotate,
+  onAutoRotateChange,
+}: {
+  material: CrystalMaterialSettings;
+  onMaterialChange: (patch: Partial<CrystalMaterialSettings>) => void;
+  autoRotate: boolean;
+  onAutoRotateChange: (v: boolean) => void;
+}) {
+  const s = useReconstruct();
 
   return (
-    <aside className="scroll-thin flex w-[300px] shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px]">
-      <div>
-        <PanelSectionTitle>Export Format</PanelSectionTitle>
-        <div className="mt-[10px] grid grid-cols-3 gap-[6px]">
-          {EXPORT_FORMATS.map((f) => {
-            const selected = s.format === f.id;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => s.setFormat(f.id)}
-                className={cn(
-                  "flex h-[50px] flex-col items-center justify-center gap-[2px] rounded-[5px] border transition-colors",
-                  selected
-                    ? "border-accent/70 bg-accent/15 text-accent-2"
-                    : "border-line bg-surface text-txt-muted hover:bg-surface-2",
-                )}
-              >
-                <span className="text-[12px] font-semibold">{f.id}</span>
-                <span className="text-[9px] text-txt-dim">{f.desc}</span>
-              </button>
-            );
-          })}
-        </div>
+    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
+      <div className="border-b border-line px-[16px] py-[14px]">
+        <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">EXPORT WORKSPACE</h1>
       </div>
 
-      <div className="space-y-[10px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>Output Quality</PanelSectionTitle>
-        <SliderControl inline label="Quality" value={s.quality} onChange={s.setQuality} />
-        <SliderControl
-          inline
-          label="Decimation"
-          value={s.decimation}
-          onChange={s.setDecimation}
-        />
-        <SliderControl inline label="Smoothing" value={s.smoothing} onChange={s.setSmoothing} />
-        <div className="flex items-center gap-[8px]">
-          <FieldLabel className="w-[86px] shrink-0">Units</FieldLabel>
-          <Select
-            label="Units"
-            value={s.units}
-            options={UNITS}
-            onChange={s.setUnits}
-            className="flex-1"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-[10px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>Crystal Dimensions</PanelSectionTitle>
-        <Select
-          label="Crystal preset"
-          value={CRYSTAL_PRESETS[1] as string}
-          options={CRYSTAL_PRESETS}
-          onChange={() => {}}
-        />
-        <div className="grid grid-cols-3 gap-[6px]">
-          <NumberField label="Width" prefix="W" value={s.width} onChange={s.setWidth} />
-          <NumberField label="Height" prefix="H" value={s.height} onChange={s.setHeight} />
-          <NumberField label="Depth" prefix="D" value={s.depth} onChange={s.setDepth} />
-        </div>
-        <p className="text-[10.5px] text-txt-dim">
-          {s.width} × {s.height} × {s.depth} cm — fits laser bed
-        </p>
-      </div>
-
-      <div className="space-y-[9px] border-t border-line pt-[12px]">
-        <PanelSectionTitle>File Options</PanelSectionTitle>
-        {(
-          [
-            ["Hollow interior", s.hollow, s.setHollow],
-            ["Include base", s.includeBase, s.setIncludeBase],
-            ["Embed texture", s.embedTexture, s.setEmbedTexture],
-            ["Binary encoding", s.binary, s.setBinary],
-          ] as const
-        ).map(([label, checked, onChange]) => (
-          <div key={label} className="flex items-center justify-between">
-            <FieldLabel className="text-[11.5px]">{label}</FieldLabel>
-            <ToggleSwitch label={label} checked={checked} onChange={onChange} />
+      <div className="scroll-thin flex-1 overflow-y-auto">
+        <section className="border-b border-line px-[16px] py-[13px]">
+          <PanelSectionTitle>1. PROJECT</PanelSectionTitle>
+          <div className="mt-[8px] aspect-[16/11] w-full overflow-hidden rounded-[5px] border border-line bg-surface">
+            {s.sourceImageUrl ? (
+              <img
+                src={s.sourceImageUrl}
+                alt="Current project source"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-[14px] text-center text-[10.5px] text-txt-dim">
+                No project loaded
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+          <p className="mt-[10px] truncate text-[11.5px] text-txt">{s.sourceFileName ?? "—"}</p>
+          <p className="mt-[2px] text-[10.5px] text-txt-dim">
+            {s.imageWidth ? `${s.imageWidth} × ${s.imageHeight}` : "—"}
+          </p>
+          <Link
+            to="/reconstruct"
+            search={s.projectId ? { project: s.projectId } : {}}
+            className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
+          >
+            <FolderOpen className="size-[13px]" />
+            Open Full Reconstruction
+          </Link>
+        </section>
 
-      <button
-        type="button"
-        onClick={s.runExport}
-        disabled={s.running}
-        style={{ background: "var(--gradient-accent)" }}
-        className="mt-auto flex h-[38px] shrink-0 items-center justify-center gap-[8px] rounded-[5px] text-[12.5px] font-semibold text-white shadow-[0_6px_18px_-8px_var(--accent)] disabled:opacity-60"
-      >
-        <Download className="size-[15px]" />
-        {s.running ? "Exporting..." : "Export Model"}
-      </button>
+        <section className="px-[16px] py-[13px]">
+          <PanelSectionTitle>2. CRYSTAL MATERIAL</PanelSectionTitle>
+          <p className="mt-[8px] text-[10.5px] leading-[15px] text-txt-dim">
+            Previews the real reconstructed mesh as glass/crystal — rotate the preview 360° to
+            inspect the finished piece from every angle.
+          </p>
+
+          <div className="mt-[13px]">
+            <span className="block text-[11px] text-txt-muted">Tint</span>
+            <div className="mt-[8px] flex gap-[8px]">
+              {TINTS.map((t) => (
+                <button
+                  key={t.label}
+                  type="button"
+                  title={t.label}
+                  aria-label={t.label}
+                  aria-pressed={material.color === t.color}
+                  onClick={() => onMaterialChange({ color: t.color })}
+                  className={cn(
+                    "size-[26px] shrink-0 rounded-full border-2 transition-transform",
+                    material.color === t.color
+                      ? "scale-110 border-accent-2"
+                      : "border-line hover:scale-105",
+                  )}
+                  style={{ background: t.color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-[15px]">
+            <SliderControl
+              inline
+              label="Clarity"
+              value={material.clarity}
+              onChange={(v) => onMaterialChange({ clarity: v })}
+            />
+          </div>
+
+          <div className="mt-[13px] flex items-center justify-between">
+            <span className="text-[11.5px] text-txt-muted">Auto Rotate</span>
+            <ToggleSwitch label="Auto Rotate" checked={autoRotate} onChange={onAutoRotateChange} />
+          </div>
+        </section>
+      </div>
     </aside>
   );
 }

@@ -1,25 +1,23 @@
 import { ChevronDown } from "lucide-react";
 import { useCallback, useRef } from "react";
 
-import bustFront from "@/assets/bust-front.png";
-import bustPerspective from "@/assets/bust-perspective.png";
-import crystalHero from "@/assets/crystal-hero.png";
-import texFront from "@/assets/tex-front.png";
-import texPerspective from "@/assets/tex-perspective.png";
-import { VERSIONS } from "@/data/historyMock";
+import { DepthMeshViewer } from "@/components/studio/DepthMeshViewer";
 import { cn } from "@/lib/utils";
 import { useHistory } from "@/stores/historyStore";
+import { useReconstruct } from "@/stores/reconstructStore";
 
-const IMAGES: Record<string, string> = {
-  "v1.0": bustPerspective,
-  "v1.1": bustPerspective,
-  "v1.2": bustFront,
-  "v1.3": texPerspective,
-  "v1.4": crystalHero,
-};
-
+/**
+ * Before/after here means "flat source photo" vs "the real reconstructed
+ * mesh" — not two different mesh snapshots. The pipeline only ever keeps one
+ * mesh per project (no per-version geometry is stored), so comparing two
+ * arbitrary history events against each other would show the same image
+ * twice — a real bug this replaces. Photo-vs-mesh is always a genuine,
+ * meaningful difference, and still uses the picked events for real vertex
+ * count / event-count stats below.
+ */
 export function HistoryComparisonViewport() {
   const s = useHistory();
+  const { sourceImageUrl, geometry, texture, status } = useReconstruct();
   const ref = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
@@ -33,6 +31,14 @@ export function HistoryComparisonViewport() {
     },
     [s],
   );
+
+  if (!sourceImageUrl) {
+    return (
+      <div className="viewport-surface relative flex flex-1 items-center justify-center text-[11px] text-txt-dim">
+        {s.isLoading || status === "idle" ? "Loading…" : "No reconstructed model yet"}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -58,20 +64,25 @@ export function HistoryComparisonViewport() {
         }}
       />
 
+      {/* Before: the real flat source photo. */}
       <img
-        src={IMAGES[s.baseId]}
-        alt={`Version ${s.baseId} of the model`}
-        className="absolute left-1/2 top-[53%] h-[84%] -translate-x-1/2 -translate-y-1/2 object-contain grayscale"
+        src={sourceImageUrl}
+        alt="Original source photo"
+        className="pointer-events-none absolute left-1/2 top-[53%] h-[84%] -translate-x-1/2 -translate-y-1/2 object-contain"
       />
+
+      {/* After: the real reconstructed mesh, revealed as the split moves right. */}
       <div
-        className="absolute inset-0 overflow-hidden"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
         style={{ clipPath: `inset(0 0 0 ${s.split}%)` }}
       >
-        <img
-          src={IMAGES[s.compareId]}
-          alt={`Version ${s.compareId} of the model`}
-          className="absolute left-1/2 top-[53%] h-[84%] -translate-x-1/2 -translate-y-1/2 object-contain"
-        />
+        {geometry ? (
+          <DepthMeshViewer geometry={geometry} texture={texture} className="absolute inset-0" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-txt-dim">
+            Building mesh…
+          </div>
+        )}
       </div>
 
       <div
@@ -84,14 +95,14 @@ export function HistoryComparisonViewport() {
       </div>
 
       <span className="absolute left-[16px] top-[12px] z-10 rounded-[4px] bg-surface/80 px-[8px] py-[3px] text-[11px] text-txt-muted backdrop-blur-sm">
-        Overlay — {s.baseId} vs {s.compareId}
+        Photo vs reconstructed mesh
       </span>
       <span className="absolute right-[14px] top-[12px] z-10 rounded-[4px] bg-surface/80 px-[8px] py-[3px] font-mono text-[11px] text-txt-muted backdrop-blur-sm">
         split {s.split}%
       </span>
       {s.showDiff ? (
         <span className="absolute bottom-[16px] left-1/2 -translate-x-1/2 rounded-[5px] border border-line bg-surface/85 px-[12px] py-[6px] font-mono text-[10.5px] text-txt-muted backdrop-blur-sm">
-          drag to compare — +271,918 verts, +4 texture sets
+          {s.diffStats.map((d) => `${d.label}: ${d.value}`).join(" · ")}
         </span>
       ) : null}
     </div>
@@ -101,48 +112,51 @@ export function HistoryComparisonViewport() {
 export function HistoryTimeline() {
   const s = useHistory();
   return (
-    <section className="flex h-[195px] w-[300px] shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px]">
+    <section className="flex h-[195px] w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px] lg:w-[300px]">
       <h2 className="text-[12px] font-semibold text-txt">Project Timeline</h2>
-      <ol className="scroll-thin mt-[10px] flex-1 overflow-y-auto pl-[6px]">
-        {VERSIONS.map((v, i) => {
-          const active = v.id === s.compareId || v.id === s.baseId;
-          return (
-            <li key={v.id} className="relative pb-[12px] pl-[16px]">
-              {i < VERSIONS.length - 1 ? (
-                <span className="absolute left-[4px] top-[10px] h-full w-px bg-line" />
-              ) : null}
-              <span
-                className={cn(
-                  "absolute left-0 top-[4px] size-[9px] rounded-full border",
-                  active ? "border-accent-2 bg-accent" : "border-line-strong bg-surface-2",
-                )}
-              />
-              <button
-                type="button"
-                onClick={() => s.setCompareId(v.id)}
-                className="text-left"
-              >
+      {s.versions.length === 0 ? (
+        <p className="mt-[10px] text-[11px] text-txt-dim">
+          {s.isLoading ? "Loading…" : "No events yet."}
+        </p>
+      ) : (
+        <ol className="scroll-thin mt-[10px] flex-1 overflow-y-auto pl-[6px]">
+          {s.versions.map((v, i) => {
+            const active = v.id === s.compareId || v.id === s.baseId;
+            return (
+              <li key={v.id} className="relative pb-[12px] pl-[16px]">
+                {i < s.versions.length - 1 ? (
+                  <span className="absolute left-[4px] top-[10px] h-full w-px bg-line" />
+                ) : null}
                 <span
-                  className={cn("block text-[11px]", active ? "text-accent-2" : "text-txt-muted")}
-                >
-                  {v.id} — {v.name}
-                </span>
-                <span className="block font-mono text-[9.5px] text-txt-dim">
-                  {v.time} • {v.verts} verts
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                  className={cn(
+                    "absolute left-0 top-[4px] size-[9px] rounded-full border",
+                    active ? "border-accent-2 bg-accent" : "border-line-strong bg-surface-2",
+                  )}
+                />
+                <button type="button" onClick={() => s.setCompareId(v.id)} className="text-left">
+                  <span
+                    className={cn("block text-[11px]", active ? "text-accent-2" : "text-txt-muted")}
+                  >
+                    {v.name}
+                  </span>
+                  <span className="block font-mono text-[9.5px] text-txt-dim">
+                    {v.time} • {v.verts} verts
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </section>
   );
 }
 
 export function HistoryThumb({ id }: { id: string }) {
   const s = useHistory();
-  const v = VERSIONS.find((x) => x.id === id)!;
+  const v = s.versions.find((x) => x.id === id);
   const active = s.compareId === id;
+  if (!v) return <div className="viewport-surface" aria-hidden="true" />;
   return (
     <button
       type="button"
@@ -153,15 +167,17 @@ export function HistoryThumb({ id }: { id: string }) {
       )}
     >
       <span className="absolute left-[10px] top-[8px] z-10 flex items-center gap-[4px] text-[11px] text-txt-muted">
-        {v.id}
+        {v.stage}
         <ChevronDown className="size-[11px] text-txt-dim" />
       </span>
-      <img
-        src={IMAGES[id] ?? texFront}
-        alt={`Snapshot of version ${id}`}
-        loading="lazy"
-        className="absolute left-1/2 top-[58%] h-[82%] -translate-x-1/2 -translate-y-1/2 object-contain"
-      />
+      {s.thumbnailUrl ? (
+        <img
+          src={s.thumbnailUrl}
+          alt={`Snapshot for ${v.name}`}
+          loading="lazy"
+          className="absolute left-1/2 top-[58%] h-[82%] -translate-x-1/2 -translate-y-1/2 object-contain"
+        />
+      ) : null}
     </button>
   );
 }
