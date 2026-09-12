@@ -1,8 +1,9 @@
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
+import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import * as THREE from "three";
 
-export type ExportFormat = "obj" | "glb";
+export type ExportFormat = "obj" | "glb" | "stl";
 
 export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -21,6 +22,12 @@ export async function buildExportBlob(mesh: THREE.Mesh, format: ExportFormat): P
     const exporter = new OBJExporter();
     const text = exporter.parse(mesh);
     return new Blob([text], { type: "text/plain" });
+  }
+
+  if (format === "stl") {
+    const exporter = new STLExporter();
+    const result = exporter.parse(mesh, { binary: true });
+    return new Blob([result], { type: "model/stl" });
   }
 
   const exporter = new GLTFExporter();

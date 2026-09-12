@@ -233,11 +233,7 @@ export const supabaseProjectStore: ProjectStore = {
   async recordExport(id, input: ProjectExportInput) {
     const userId = await getCurrentUserId();
     const path = modelPath(userId, id, input.modelFormat);
-    await uploadObject(
-      path,
-      input.modelBlob,
-      input.modelFormat === "glb" ? "model/gltf-binary" : "text/plain",
-    );
+    await uploadObject(path, input.modelBlob, input.modelBlob.type || "application/octet-stream");
     await updateProject(id, { model_path: path, model_format: input.modelFormat });
     await insertHistoryEvent({
       project_id: id,

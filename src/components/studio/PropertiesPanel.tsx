@@ -12,6 +12,7 @@ import { CollapsibleSection, FieldLabel, NumberField, Select, SliderControl } fr
 const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "glb", label: "GLB (with texture)" },
   { value: "obj", label: "OBJ (geometry only)" },
+  { value: "stl", label: "STL (3D printing)" },
 ];
 
 export function PropertiesPanel() {

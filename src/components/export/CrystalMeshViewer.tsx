@@ -261,13 +261,21 @@ export const CrystalMeshViewer = forwardRef<
 
       {scene.showBust ? (
         <group position={[-block.center.x, -block.center.y, -block.center.z]}>
-          {/* The real photo-textured bust, unchanged from the rest of the app. */}
+          {/* The real photo-textured bust, unchanged from the rest of the app.
+              FrontSide (not DoubleSide): the shell's front and back layers
+              are both real geometry with outward-facing normals, so
+              DoubleSide would render both at once from any given angle —
+              the front layer's inside face bleeding through together with
+              the back layer, both carrying the same photo texture, which
+              looks like a ghosted double/mirrored image from the side.
+              FrontSide shows only whichever layer actually faces the
+              camera, which is what a real solid object does. */}
           <mesh geometry={geometry}>
             <meshStandardMaterial
               map={texture ?? null}
               roughness={0.9}
               metalness={0}
-              side={THREE.DoubleSide}
+              side={THREE.FrontSide}
             />
           </mesh>
         </group>
