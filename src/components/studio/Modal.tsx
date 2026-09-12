@@ -28,9 +28,11 @@ export function Modal({
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const node = ref.current;
-    node?.querySelector<HTMLElement>(
-      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
-    )?.focus();
+    node
+      ?.querySelector<HTMLElement>(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+      )
+      ?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
