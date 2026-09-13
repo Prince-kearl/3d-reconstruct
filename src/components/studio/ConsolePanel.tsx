@@ -40,6 +40,7 @@ export function ConsolePanel({
   steps,
   statusLabel,
   ringState,
+  title = "Reconstruction Progress",
 }: {
   lines: string[];
   progress: number;
@@ -47,6 +48,7 @@ export function ConsolePanel({
   steps: readonly string[];
   statusLabel: string;
   ringState: "idle" | "running" | "done";
+  title?: string | undefined;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Console");
 
@@ -100,7 +102,7 @@ export function ConsolePanel({
 
       <section className="flex shrink-0 gap-[8px] overflow-hidden rounded-[6px] border border-line bg-panel px-[14px] py-[11px] xl:w-[292px]">
         <div className="min-w-0 flex-1 pt-[1px]">
-          <h2 className="text-[12px] font-semibold text-txt">Reconstruction Progress</h2>
+          <h2 className="text-[12px] font-semibold text-txt">{title}</h2>
           <ul className="mt-[10px] space-y-[7px]">
             {steps.map((step, i) => {
               const done = i < completedSteps;

@@ -6,8 +6,24 @@ import * as THREE from "three";
 import { buildExportBlob, downloadBlob, type ExportFormat } from "@/lib/mesh/exportMesh";
 import { projectStore } from "@/lib/projects";
 import { cn } from "@/lib/utils";
-import { QUALITY_SEGMENTS, useReconstruct } from "@/stores/reconstructStore";
-import { CollapsibleSection, FieldLabel, NumberField, Select, SliderControl } from "./primitives";
+import {
+  QUALITY_SEGMENTS,
+  useReconstruct,
+  type ReconstructionMode,
+} from "@/stores/reconstructStore";
+import {
+  CollapsibleSection,
+  FieldLabel,
+  NumberField,
+  SegmentedControl,
+  Select,
+  SliderControl,
+} from "./primitives";
+
+const MODE_LABELS: Record<ReconstructionMode, string> = {
+  "depth-only": "Depth Only",
+  "ai-multi-view": "AI Multi-View",
+};
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string }[] = [
   { value: "glb", label: "GLB (with texture)" },
@@ -157,6 +173,25 @@ export function PropertiesPanel() {
               >
                 Reset Transform
               </button>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Reconstruction Mode">
+            <div className="space-y-[9px]">
+              <SegmentedControl
+                options={["Depth Only", "AI Multi-View"] as const}
+                value={MODE_LABELS[s.reconstructionMode]}
+                onChange={(label) =>
+                  s.setReconstructionMode(
+                    label === "AI Multi-View" ? "ai-multi-view" : "depth-only",
+                  )
+                }
+              />
+              <p className="pl-[6px] text-[10.5px] leading-[15px] text-txt-dim">
+                {s.reconstructionMode === "ai-multi-view"
+                  ? "Uses AI-generated side views to shape geometry when available — manage generation in Refine."
+                  : "Uses only the front photo's depth map — today's default, works everywhere."}
+              </p>
             </div>
           </CollapsibleSection>
 

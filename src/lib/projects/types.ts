@@ -1,5 +1,5 @@
 import type { ColorGrading } from "@/lib/mesh/applyColorGrading";
-import type { Quality } from "@/stores/reconstructStore";
+import type { Quality, ReconstructionMode } from "@/stores/reconstructStore";
 
 export type ProjectStatus = "processing" | "completed" | "failed";
 
@@ -30,6 +30,7 @@ export interface ProjectRecord {
   edgeFeather: number;
   volume: number;
   colorGrading: ColorGrading;
+  reconstructionMode: ReconstructionMode;
 
   vertexCount: number;
   faceCount: number;
@@ -37,6 +38,25 @@ export interface ProjectRecord {
   modelUrl: string | null;
   modelFormat: string | null;
   errorMessage: string | null;
+
+  /** null = multi-view AI has never been run for this project. */
+  multiViewStatus: MultiViewStoredStatus | null;
+  multiViewViews: StoredMultiViewEntry[];
+  /** The maskVersion the stored views were generated against — compared to the live mask's version to detect staleness. */
+  multiViewMaskVersion: string | null;
+}
+
+export type MultiViewStoredStatus = "ready" | "stale" | "failed";
+
+export interface StoredMultiViewEntry {
+  angle: string;
+  imageUrl: string;
+  width: number;
+  height: number;
+  confidence: number;
+  provider: string;
+  model: string;
+  generatedAt: number;
 }
 
 export type ProjectSummary = Omit<
@@ -64,6 +84,7 @@ export interface ProjectCompleteInput {
   edgeFeather: number;
   volume: number;
   colorGrading: ColorGrading;
+  reconstructionMode: ReconstructionMode;
   vertexCount: number;
   faceCount: number;
 }
@@ -75,6 +96,7 @@ export interface ProjectSettingsInput {
   edgeFeather: number;
   volume: number;
   colorGrading: ColorGrading;
+  reconstructionMode: ReconstructionMode;
 }
 
 export interface ProjectExportInput {
@@ -86,6 +108,20 @@ export interface ProjectMaskInput {
   maskWidth: number;
   maskHeight: number;
   maskBlob: Blob;
+}
+
+export interface ProjectMultiViewInput {
+  status: MultiViewStoredStatus;
+  maskVersion: string;
+  views: {
+    angle: string;
+    blob: Blob;
+    width: number;
+    height: number;
+    confidence: number;
+    provider: string;
+    model: string;
+  }[];
 }
 
 /**
@@ -104,6 +140,8 @@ export interface ProjectStore {
   updateSettings(id: string, input: ProjectSettingsInput): Promise<void>;
   recordExport(id: string, input: ProjectExportInput): Promise<void>;
   saveMask(id: string, input: ProjectMaskInput): Promise<void>;
+  saveMultiView(id: string, input: ProjectMultiViewInput): Promise<void>;
+  markMultiViewStale(id: string): Promise<void>;
   rename(id: string, name: string): Promise<void>;
   touchOpened(id: string): Promise<void>;
   remove(id: string): Promise<void>;

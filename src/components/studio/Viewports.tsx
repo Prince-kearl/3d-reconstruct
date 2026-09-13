@@ -263,7 +263,7 @@ export function PerspectiveViewport() {
   );
 }
 
-export type OrthoViewName = "Front" | "Three-Quarter" | "Depth Map" | "Wireframe";
+export type OrthoViewName = "Front" | "Three-Quarter" | "Depth Map" | "Wireframe" | "Multi-View";
 
 export function OrthographicViewport({
   name,
@@ -274,8 +274,9 @@ export function OrthographicViewport({
   gizmo?: "front" | "right";
   className?: string;
 }) {
-  const { geometry, texture, depthPreviewUrl, status } = useReconstruct();
+  const { geometry, texture, depthPreviewUrl, status, multiViewViews } = useReconstruct();
   const ready = status === "ready" && geometry;
+  const inspectedView = multiViewViews.find((v) => v.status === "ok" && v.imageUrl);
 
   return (
     <div className={cn("viewport-surface relative overflow-hidden", className)}>
@@ -292,6 +293,16 @@ export function OrthographicViewport({
           />
         ) : (
           <EmptyHint message="No depth data yet" />
+        )
+      ) : name === "Multi-View" ? (
+        inspectedView ? (
+          <img
+            src={inspectedView.imageUrl!}
+            alt={`AI-generated ${inspectedView.angle} view`}
+            className="absolute left-1/2 top-[54%] h-[82%] -translate-x-1/2 -translate-y-1/2 object-contain"
+          />
+        ) : (
+          <EmptyHint message="No generated views yet" />
         )
       ) : ready ? (
         <DepthMeshViewer

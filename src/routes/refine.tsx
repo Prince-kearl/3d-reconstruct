@@ -110,6 +110,8 @@ function RefineWorkspace({ projectId }: { projectId: string }) {
     loadProject,
     sourceFileName,
     resetTransform,
+    multiViewStatus,
+    multiViewViews,
   } = useReconstruct();
 
   useEffect(() => {
@@ -140,7 +142,9 @@ function RefineWorkspace({ projectId }: { projectId: string }) {
                 />
                 <div className="grid grid-cols-2">
                   <OrthographicViewport name="Depth Map" className="border-r border-line" />
-                  <OrthographicViewport name="Wireframe" />
+                  <OrthographicViewport
+                    name={multiViewViews.length > 0 ? "Multi-View" : "Wireframe"}
+                  />
                 </div>
               </div>
             </div>
@@ -151,6 +155,7 @@ function RefineWorkspace({ projectId }: { projectId: string }) {
               steps={RECONSTRUCTION_STEPS}
               statusLabel={STATUS_LABEL[status]}
               ringState={RING_STATE[status]}
+              title={multiViewStatus === "generating" ? "Multi-View Progress" : undefined}
             />
           </div>
         </>

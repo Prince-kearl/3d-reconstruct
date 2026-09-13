@@ -1,11 +1,21 @@
 import { Link } from "@tanstack/react-router";
-import { FolderOpen, Paintbrush } from "lucide-react";
+import { FolderOpen, Loader2, Paintbrush, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { PanelSectionTitle } from "@/components/studio/primitives";
-import { useReconstruct } from "@/stores/reconstructStore";
+import { ANGLE_LABELS } from "@/lib/multiview";
+import { useReconstruct, type MultiViewStatus } from "@/stores/reconstructStore";
 
 import { SilhouetteEditor } from "./SilhouetteEditor";
+
+const STATUS_TEXT: Record<MultiViewStatus, string> = {
+  off: "Not generated yet",
+  idle: "Generated — not currently used",
+  generating: "Generating…",
+  ready: "Ready — shaping the model's sides",
+  stale: "Stale — the silhouette has changed since these were generated",
+  failed: "Last attempt failed",
+};
 
 export function RefinementPanel() {
   const s = useReconstruct();
@@ -71,6 +81,61 @@ export function RefinementPanel() {
             <Paintbrush className="size-[13px]" />
             Edit Silhouette
           </button>
+        </section>
+
+        <section className="px-[16px] py-[13px]">
+          <PanelSectionTitle>3. MULTI-VIEW</PanelSectionTitle>
+          <p className="mt-[8px] text-[10.5px] leading-[15px] text-txt-dim">
+            Generates AI side views (±30°, ±45°) to shape the model's sides beyond what the front
+            photo's depth map alone can infer. Never runs automatically — a mask edit only marks
+            existing views stale.
+          </p>
+          <p className="mt-[9px] text-[11.5px] text-txt">{STATUS_TEXT[s.multiViewStatus]}</p>
+          {s.multiViewViews.length > 0 ? (
+            <ul className="mt-[6px] space-y-[2px] text-[10.5px] text-txt-dim">
+              {s.multiViewViews.map((v) => (
+                <li key={v.angle}>
+                  {ANGLE_LABELS[v.angle]} —{" "}
+                  {v.status === "ok" ? "OK" : `Failed (${v.failureReason ?? "unknown"})`}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {s.multiViewError ? (
+            <p className="mt-[6px] text-[10.5px] text-destructive">{s.multiViewError}</p>
+          ) : null}
+
+          {s.multiViewStatus === "generating" ? (
+            <button
+              type="button"
+              onClick={s.cancelMultiView}
+              className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
+            >
+              <Loader2 className="size-[13px] animate-spin" />
+              Cancel
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => void s.generateMultiView()}
+                disabled={!s.mask}
+                className="mt-[11px] flex h-[30px] w-full items-center justify-center gap-[7px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong disabled:opacity-50"
+              >
+                <Sparkles className="size-[13px]" />
+                {s.multiViewStatus === "off" ? "Generate AI Views" : "Regenerate AI Views"}
+              </button>
+              {s.multiViewStatus === "stale" ? (
+                <button
+                  type="button"
+                  onClick={s.rebuildGeometryFromExistingViews}
+                  className="mt-[7px] flex h-[28px] w-full items-center justify-center gap-[7px] rounded-[4px] text-[10.5px] text-txt-muted transition-colors hover:text-txt"
+                >
+                  Rebuild Geometry Only (no AI re-run)
+                </button>
+              ) : null}
+            </>
+          )}
         </section>
       </div>
 

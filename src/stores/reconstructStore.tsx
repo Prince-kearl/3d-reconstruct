@@ -15,8 +15,23 @@ import {
   NEUTRAL_GRADING,
   type ColorGrading,
 } from "@/lib/mesh/applyColorGrading";
-import { buildDepthGeometry } from "@/lib/mesh/buildDepthGeometry";
+import { buildDepthGeometry, type SideViewSilhouette } from "@/lib/mesh/buildDepthGeometry";
 import { compositeMaskedImage } from "@/lib/mesh/compositeMaskedImage";
+import {
+  buildMultiViewTextureAtlas,
+  type MultiViewTextureAtlas,
+} from "@/lib/texture/buildMultiViewTextureAtlas";
+import {
+  ANGLE_DEGREES,
+  ANGLE_LABELS,
+  computeMaskFingerprint,
+  multiViewProvider,
+  prepareSubjectForGeneration,
+  STANDARD_ANGLES,
+  MultiViewError,
+  type GeneratedView,
+  type ViewAngle,
+} from "@/lib/multiview";
 import { projectStore } from "@/lib/projects";
 import { makeThumbnailBlob } from "@/lib/projects/thumbnail";
 import { backgroundRemover, encodeMaskBlob, type SegmentationResult } from "@/lib/segmentation";
@@ -24,6 +39,16 @@ import { getReconstructionDefaults } from "@/lib/settings/reconstructionDefaults
 
 export const QUALITY_SEGMENTS = { Fast: 96, Balanced: 160, High: 224 } as const;
 export type Quality = keyof typeof QUALITY_SEGMENTS;
+
+export type ReconstructionMode = "depth-only" | "ai-multi-view";
+/**
+ * "off" — never generated. "idle" — generated once, not currently running.
+ * "generating" — a job is in flight. "ready" — usable views exist and match
+ * the current mask. "stale" — usable views exist but the mask has changed
+ * since (never used silently — see applyMaskEdit). "failed" — last attempt
+ * produced no usable views.
+ */
+export type MultiViewStatus = "off" | "idle" | "generating" | "ready" | "stale" | "failed";
 
 export type ReconstructStatus =
   | "idle"
@@ -84,6 +109,16 @@ function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
+/** Only "ok" views with a real mask can inform geometry — failed/maskless views are skipped, never faked. */
+function toSideViewSilhouettes(views: GeneratedView[]): SideViewSilhouette[] {
+  const result: SideViewSilhouette[] = [];
+  for (const view of views) {
+    if (view.status !== "ok" || !view.mask) continue;
+    result.push({ angleDegrees: ANGLE_DEGREES[view.angle], mask: view.mask });
+  }
+  return result;
+}
+
 type Store = {
   status: ReconstructStatus;
   logLines: string[];
@@ -115,6 +150,15 @@ type Store = {
   setWarmth: (v: number) => void;
   setContrast: (v: number) => void;
   resetColorGrading: () => void;
+
+  reconstructionMode: ReconstructionMode;
+  setReconstructionMode: (mode: ReconstructionMode) => void;
+  multiViewStatus: MultiViewStatus;
+  multiViewViews: GeneratedView[];
+  multiViewError: string | null;
+  generateMultiView: () => Promise<void>;
+  cancelMultiView: () => void;
+  rebuildGeometryFromExistingViews: () => void;
 
   scale: number;
   setScale: (v: number) => void;
@@ -159,6 +203,11 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
   const [edgeFeather, setEdgeFeatherState] = useState(defaults.edgeFeather);
   const [volume, setVolumeState] = useState(defaults.volume);
   const [colorGrading, setColorGradingState] = useState<ColorGrading>(NEUTRAL_GRADING);
+  const [reconstructionMode, setReconstructionModeState] =
+    useState<ReconstructionMode>("depth-only");
+  const [multiViewStatus, setMultiViewStatus] = useState<MultiViewStatus>("off");
+  const [multiViewViews, setMultiViewViews] = useState<GeneratedView[]>([]);
+  const [multiViewError, setMultiViewError] = useState<string | null>(null);
 
   const [scale, setScale] = useState(1);
   const [rotationY, setRotationY] = useState(0);
@@ -180,6 +229,12 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
   const settingsSaveTimer = useRef<number | null>(null);
   const maskSaveTimer = useRef<number | null>(null);
   const projectIdRef = useRef<string | null>(null);
+  /** Populated only when multiViewStatus is genuinely "ready" for the current mask — see applyMaskEdit. */
+  const multiViewGeometryInputRef = useRef<SideViewSilhouette[] | null>(null);
+  const multiViewJobRef = useRef<{ cancel: () => void } | null>(null);
+  const multiViewMaskFingerprintRef = useRef<string | null>(null);
+  /** Populated only alongside multiViewGeometryInputRef — see applyMultiViewTexture. Null means "use the plain original texture" (today's behavior). */
+  const multiViewAtlasRef = useRef<MultiViewTextureAtlas | null>(null);
 
   const appendLog = useCallback((line: string) => {
     setLogLines((prev) => [...prev, `[${timestamp()}] ${line}`]);
@@ -208,6 +263,13 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
           segments: QUALITY_SEGMENTS[params.quality],
         },
         maskResultRef.current,
+        multiViewGeometryInputRef.current,
+        multiViewAtlasRef.current
+          ? {
+              frontURange: multiViewAtlasRef.current.frontURange,
+              backURange: multiViewAtlasRef.current.backURange,
+            }
+          : null,
       );
       setGeometry((prev) => {
         prev?.dispose();
@@ -227,6 +289,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       volume: number;
       quality: Quality;
       colorGrading: ColorGrading;
+      reconstructionMode: ReconstructionMode;
     }) => {
       if (!projectIdRef.current) return;
       if (settingsSaveTimer.current) window.clearTimeout(settingsSaveTimer.current);
@@ -246,6 +309,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       volume: number;
       quality: Quality;
       colorGrading: ColorGrading;
+      reconstructionMode: ReconstructionMode;
     }) => {
       if (rebuildTimer.current) window.clearTimeout(rebuildTimer.current);
       rebuildTimer.current = window.setTimeout(() => rebuildGeometry(params), 120);
@@ -255,7 +319,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
   );
 
   const rebuildTexture = useCallback((grading: ColorGrading) => {
-    const base = compositedCanvasRef.current;
+    const base = multiViewAtlasRef.current?.canvas ?? compositedCanvasRef.current;
     if (!base) return;
     const graded = applyColorGrading(base, grading);
     const tex = new THREE.Texture(graded);
@@ -266,6 +330,46 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       return tex;
     });
   }, []);
+
+  /**
+   * Bakes (or clears) the view-aware texture atlas from real generated views
+   * — never called automatically on a timer, only right after views become
+   * usable (generation succeeds, a geometry-only rebuild reuses existing
+   * views, or a project loads with fresh views). Failure here degrades to
+   * the plain original texture, never breaks reconstruction (§29).
+   */
+  const applyMultiViewTexture = useCallback(
+    async (views: GeneratedView[]) => {
+      const img = imageElRef.current;
+      const currentMask = maskResultRef.current;
+      if (!img || !currentMask) {
+        multiViewAtlasRef.current = null;
+        return;
+      }
+      try {
+        appendLog("Multi-view: projecting textures");
+        const frontCanvas = compositedCanvasRef.current ?? compositeMaskedImage(img, currentMask);
+        const atlas = await buildMultiViewTextureAtlas(
+          frontCanvas,
+          currentMask,
+          img.naturalWidth,
+          img.naturalHeight,
+          views,
+        );
+        multiViewAtlasRef.current = atlas;
+        appendLog(
+          atlas
+            ? "Multi-view: blending texture sources"
+            : "Multi-view: no usable views for texture blending — keeping original texture.",
+        );
+      } catch (error) {
+        multiViewAtlasRef.current = null;
+        const message = error instanceof Error ? error.message : "unknown error";
+        appendLog(`Multi-view: texture blending failed (${message}) — using original texture.`);
+      }
+    },
+    [appendLog],
+  );
 
   const scheduleTextureRebuild = useCallback(
     (grading: ColorGrading) => {
@@ -287,11 +391,21 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
           volume,
           quality,
           colorGrading: next,
+          reconstructionMode,
         });
         return next;
       });
     },
-    [scheduleTextureRebuild, scheduleSettingsSave, detail, smoothing, edgeFeather, volume, quality],
+    [
+      scheduleTextureRebuild,
+      scheduleSettingsSave,
+      detail,
+      smoothing,
+      edgeFeather,
+      volume,
+      quality,
+      reconstructionMode,
+    ],
   );
   const setExposure = useCallback(
     (v: number) => setColorGrading({ exposure: v }),
@@ -336,6 +450,18 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       maskResultRef.current = newMask;
       setMask(newMask);
 
+      // The mask no longer matches whatever multi-view views might exist —
+      // never silently keep using them for geometry once that's true.
+      // Regenerating is always an explicit user action (see generateMultiView /
+      // rebuildGeometryFromExistingViews), never automatic.
+      multiViewGeometryInputRef.current = null;
+      multiViewAtlasRef.current = null;
+      setMultiViewStatus((prev) => {
+        if (prev !== "ready") return prev;
+        if (projectIdRef.current) void projectStore.markMultiViewStale(projectIdRef.current);
+        return "stale";
+      });
+
       const img = imageElRef.current;
       if (img) {
         compositedCanvasRef.current = compositeMaskedImage(img, newMask);
@@ -365,40 +491,267 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
     applyMaskEdit(fresh);
   }, [sourceImageUrl, applyMaskEdit]);
 
+  const generateMultiView = useCallback(async () => {
+    const img = imageElRef.current;
+    const currentMask = maskResultRef.current;
+    const srcUrl = sourceImageUrl;
+    const pid = projectIdRef.current;
+    if (!img || !currentMask || !srcUrl || !pid) {
+      appendLog("Multi-view: no project loaded — nothing to generate views for.");
+      return;
+    }
+
+    setMultiViewStatus("generating");
+    setMultiViewError(null);
+    appendLog("Multi-view: preparing source");
+
+    try {
+      const preparedImageDataUrl = prepareSubjectForGeneration(img, currentMask).toDataURL(
+        "image/png",
+      );
+
+      appendLog("Multi-view: submitting generation job");
+      const handle = await multiViewProvider.generateViews({
+        projectId: pid,
+        sourceImageUrl: srcUrl,
+        mask: currentMask,
+        angles: STANDARD_ANGLES,
+        preparedImageDataUrl,
+      });
+      multiViewJobRef.current = handle;
+
+      const { views } = await handle.result;
+      multiViewJobRef.current = null;
+
+      for (const view of views) {
+        appendLog(
+          view.status === "ok"
+            ? `Multi-view: ${ANGLE_LABELS[view.angle]} generated`
+            : `Multi-view: ${ANGLE_LABELS[view.angle]} failed — ${view.failureReason ?? "unknown reason"}`,
+        );
+      }
+      setMultiViewViews(views);
+
+      const okViews = views.filter((v) => v.status === "ok");
+      if (okViews.length === 0) {
+        setMultiViewStatus("failed");
+        setMultiViewError("No usable views were generated.");
+        appendLog("Multi-view: no usable views — falling back to depth-only reconstruction.");
+        return;
+      }
+
+      appendLog("Multi-view: validating generated views");
+      appendLog("Multi-view: reconstructing geometry");
+      multiViewGeometryInputRef.current = toSideViewSilhouettes(okViews);
+      await applyMultiViewTexture(okViews);
+      rebuildGeometry({ detail, smoothing, edgeFeather, volume, quality });
+      rebuildTexture(colorGrading);
+
+      const fingerprint = computeMaskFingerprint(currentMask);
+      multiViewMaskFingerprintRef.current = fingerprint;
+      setMultiViewStatus("ready");
+      appendLog("Multi-view: complete");
+
+      try {
+        const viewBlobs = await Promise.all(
+          okViews.map(async (v) => {
+            const blob = await (await fetch(v.imageUrl!)).blob();
+            return {
+              angle: v.angle,
+              blob,
+              width: v.width,
+              height: v.height,
+              confidence: v.confidence,
+              provider: v.provider,
+              model: v.model,
+            };
+          }),
+        );
+        await projectStore.saveMultiView(pid, {
+          status: "ready",
+          maskVersion: fingerprint,
+          views: viewBlobs,
+        });
+      } catch (saveError) {
+        const message = saveError instanceof Error ? saveError.message : "Could not save views";
+        appendLog(`Multi-view: generated views ready, but saving them failed — ${message}`);
+      }
+    } catch (error) {
+      multiViewJobRef.current = null;
+      if (error instanceof MultiViewError && error.code === "MULTIVIEW_CANCELLED") {
+        appendLog("Multi-view: cancelled");
+        setMultiViewStatus((prev) => (prev === "generating" ? "idle" : prev));
+        return;
+      }
+      const message = error instanceof Error ? error.message : "Multi-view generation failed";
+      setMultiViewStatus("failed");
+      setMultiViewError(message);
+      appendLog(`Multi-view: ${message} — falling back to depth-only reconstruction.`);
+    }
+  }, [
+    sourceImageUrl,
+    detail,
+    smoothing,
+    edgeFeather,
+    volume,
+    quality,
+    colorGrading,
+    rebuildGeometry,
+    rebuildTexture,
+    applyMultiViewTexture,
+    appendLog,
+  ]);
+
+  const cancelMultiView = useCallback(() => {
+    multiViewJobRef.current?.cancel();
+  }, []);
+
+  const rebuildGeometryFromExistingViews = useCallback(() => {
+    const okViews = multiViewViews.filter((v) => v.status === "ok");
+    if (okViews.length === 0) {
+      appendLog("Multi-view: no previously generated views to rebuild from.");
+      return;
+    }
+    appendLog("Multi-view: rebuilding geometry from previously generated views (no AI re-run)");
+    multiViewGeometryInputRef.current = toSideViewSilhouettes(okViews);
+    rebuildGeometry({ detail, smoothing, edgeFeather, volume, quality });
+    setMultiViewStatus("ready");
+    // Texture blending runs after the initial (instant) geometry rebuild —
+    // it refines appearance shortly after, it never blocks the rebuild.
+    void applyMultiViewTexture(okViews).then(() => {
+      rebuildGeometry({ detail, smoothing, edgeFeather, volume, quality });
+      rebuildTexture(colorGrading);
+    });
+  }, [
+    multiViewViews,
+    rebuildGeometry,
+    rebuildTexture,
+    applyMultiViewTexture,
+    detail,
+    smoothing,
+    edgeFeather,
+    volume,
+    quality,
+    colorGrading,
+    appendLog,
+  ]);
+
+  const setReconstructionMode = useCallback(
+    (mode: ReconstructionMode) => {
+      setReconstructionModeState(mode);
+      if (mode === "depth-only") {
+        multiViewGeometryInputRef.current = null;
+        multiViewAtlasRef.current = null;
+      } else if (multiViewStatus === "ready") {
+        const okViews = multiViewViews.filter((v) => v.status === "ok");
+        multiViewGeometryInputRef.current = toSideViewSilhouettes(okViews);
+        void applyMultiViewTexture(okViews).then(() => {
+          rebuildGeometry({ detail, smoothing, edgeFeather, volume, quality });
+          rebuildTexture(colorGrading);
+        });
+      }
+      rebuildGeometry({ detail, smoothing, edgeFeather, volume, quality });
+      rebuildTexture(colorGrading);
+      scheduleSettingsSave({
+        detail,
+        smoothing,
+        edgeFeather,
+        volume,
+        quality,
+        colorGrading,
+        reconstructionMode: mode,
+      });
+    },
+    [
+      multiViewStatus,
+      multiViewViews,
+      rebuildGeometry,
+      rebuildTexture,
+      applyMultiViewTexture,
+      scheduleSettingsSave,
+      detail,
+      smoothing,
+      edgeFeather,
+      volume,
+      quality,
+      colorGrading,
+    ],
+  );
+
   const setDetail = useCallback(
     (v: number) => {
       setDetailState(v);
-      scheduleRebuild({ detail: v, smoothing, edgeFeather, volume, quality, colorGrading });
+      scheduleRebuild({
+        detail: v,
+        smoothing,
+        edgeFeather,
+        volume,
+        quality,
+        colorGrading,
+        reconstructionMode,
+      });
     },
-    [scheduleRebuild, smoothing, edgeFeather, volume, quality, colorGrading],
+    [scheduleRebuild, smoothing, edgeFeather, volume, quality, colorGrading, reconstructionMode],
   );
   const setSmoothing = useCallback(
     (v: number) => {
       setSmoothingState(v);
-      scheduleRebuild({ detail, smoothing: v, edgeFeather, volume, quality, colorGrading });
+      scheduleRebuild({
+        detail,
+        smoothing: v,
+        edgeFeather,
+        volume,
+        quality,
+        colorGrading,
+        reconstructionMode,
+      });
     },
-    [scheduleRebuild, detail, edgeFeather, volume, quality, colorGrading],
+    [scheduleRebuild, detail, edgeFeather, volume, quality, colorGrading, reconstructionMode],
   );
   const setEdgeFeather = useCallback(
     (v: number) => {
       setEdgeFeatherState(v);
-      scheduleRebuild({ detail, smoothing, edgeFeather: v, volume, quality, colorGrading });
+      scheduleRebuild({
+        detail,
+        smoothing,
+        edgeFeather: v,
+        volume,
+        quality,
+        colorGrading,
+        reconstructionMode,
+      });
     },
-    [scheduleRebuild, detail, smoothing, volume, quality, colorGrading],
+    [scheduleRebuild, detail, smoothing, volume, quality, colorGrading, reconstructionMode],
   );
   const setVolume = useCallback(
     (v: number) => {
       setVolumeState(v);
-      scheduleRebuild({ detail, smoothing, edgeFeather, volume: v, quality, colorGrading });
+      scheduleRebuild({
+        detail,
+        smoothing,
+        edgeFeather,
+        volume: v,
+        quality,
+        colorGrading,
+        reconstructionMode,
+      });
     },
-    [scheduleRebuild, detail, smoothing, edgeFeather, quality, colorGrading],
+    [scheduleRebuild, detail, smoothing, edgeFeather, quality, colorGrading, reconstructionMode],
   );
   const setQuality = useCallback(
     (q: Quality) => {
       setQualityState(q);
-      scheduleRebuild({ detail, smoothing, edgeFeather, volume, quality: q, colorGrading });
+      scheduleRebuild({
+        detail,
+        smoothing,
+        edgeFeather,
+        volume,
+        quality: q,
+        colorGrading,
+        reconstructionMode,
+      });
     },
-    [scheduleRebuild, detail, smoothing, edgeFeather, volume, colorGrading],
+    [scheduleRebuild, detail, smoothing, edgeFeather, volume, colorGrading, reconstructionMode],
   );
 
   const resetTransform = useCallback(() => {
@@ -422,6 +775,8 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
     setErrorMessage(null);
     setLogLines([]);
     setStatus("loading-model");
+    multiViewGeometryInputRef.current = null;
+    multiViewAtlasRef.current = null;
     appendLog(`Loaded ${file.name} (${(file.size / 1024).toFixed(0)} KB)`);
     appendLog("Loading AI models (first run downloads ~250MB combined, then caches)...");
 
@@ -501,6 +856,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
         edgeFeather,
         volume,
         colorGrading,
+        reconstructionMode,
         vertexCount: meshResult.vertexCount,
         faceCount: meshResult.faceCount,
       });
@@ -523,6 +879,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
     edgeFeather,
     volume,
     colorGrading,
+    reconstructionMode,
     quality,
     projectId,
     rebuildTexture,
@@ -592,6 +949,56 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
             .catch(() => null);
         }
         setMask(maskResultRef.current);
+        setReconstructionModeState(record.reconstructionMode);
+
+        if (record.multiViewViews.length > 0) {
+          appendLog("Multi-view: restoring previously generated views...");
+          const restoredViews: GeneratedView[] = await Promise.all(
+            record.multiViewViews.map(async (v) => ({
+              angle: v.angle as ViewAngle,
+              imageUrl: v.imageUrl,
+              mask: await backgroundRemover.removeBackground(v.imageUrl).catch(() => null),
+              width: v.width,
+              height: v.height,
+              confidence: v.confidence,
+              status: "ok" as const,
+              provider: v.provider,
+              model: v.model,
+              generatedAt: v.generatedAt,
+            })),
+          );
+          setMultiViewViews(restoredViews);
+          multiViewMaskFingerprintRef.current = record.multiViewMaskVersion;
+
+          const currentFingerprint = maskResultRef.current
+            ? computeMaskFingerprint(maskResultRef.current)
+            : null;
+          const isFresh =
+            record.multiViewStatus === "ready" &&
+            currentFingerprint !== null &&
+            currentFingerprint === record.multiViewMaskVersion;
+
+          if (isFresh && record.reconstructionMode === "ai-multi-view") {
+            multiViewGeometryInputRef.current = toSideViewSilhouettes(restoredViews);
+            setMultiViewStatus("ready");
+            // Rebuild the blended texture from the restored views too, without
+            // re-running AI generation — mirrors rebuildGeometryFromExistingViews.
+            void applyMultiViewTexture(restoredViews).then(() => {
+              rebuildGeometry({
+                detail: record.detail,
+                smoothing: record.smoothing,
+                edgeFeather: record.edgeFeather,
+                volume: record.volume,
+                quality: record.quality,
+              });
+              rebuildTexture(record.colorGrading);
+            });
+          } else {
+            setMultiViewStatus(record.multiViewStatus === "failed" ? "failed" : "stale");
+          }
+        } else {
+          setMultiViewStatus("off");
+        }
 
         setStatus("building-mesh");
         rebuildGeometry({
@@ -616,7 +1023,7 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
         appendLog(`Error: ${message}`);
       }
     },
-    [appendLog, rebuildGeometry, rebuildTexture],
+    [appendLog, rebuildGeometry, rebuildTexture, applyMultiViewTexture],
   );
 
   const newProject = useCallback(() => {
@@ -624,13 +1031,21 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
     if (textureRebuildTimer.current) window.clearTimeout(textureRebuildTimer.current);
     if (settingsSaveTimer.current) window.clearTimeout(settingsSaveTimer.current);
     if (maskSaveTimer.current) window.clearTimeout(maskSaveTimer.current);
+    multiViewJobRef.current?.cancel();
     pendingFileRef.current = null;
     depthResultRef.current = null;
     maskResultRef.current = null;
     imageElRef.current = null;
     compositedCanvasRef.current = null;
     projectIdRef.current = null;
+    multiViewGeometryInputRef.current = null;
+    multiViewAtlasRef.current = null;
+    multiViewJobRef.current = null;
+    multiViewMaskFingerprintRef.current = null;
     setStatus("idle");
+    setMultiViewStatus("off");
+    setMultiViewViews([]);
+    setMultiViewError(null);
     setLogLines([]);
     setErrorMessage(null);
     setSourceImageUrl(null);
@@ -683,6 +1098,14 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       setWarmth,
       setContrast,
       resetColorGrading,
+      reconstructionMode,
+      setReconstructionMode,
+      multiViewStatus,
+      multiViewViews,
+      multiViewError,
+      generateMultiView,
+      cancelMultiView,
+      rebuildGeometryFromExistingViews,
       scale,
       setScale,
       rotationY,
@@ -727,6 +1150,14 @@ export function ReconstructProvider({ children }: { children: ReactNode }) {
       setWarmth,
       setContrast,
       resetColorGrading,
+      reconstructionMode,
+      setReconstructionMode,
+      multiViewStatus,
+      multiViewViews,
+      multiViewError,
+      generateMultiView,
+      cancelMultiView,
+      rebuildGeometryFromExistingViews,
       scale,
       rotationY,
       resetTransform,

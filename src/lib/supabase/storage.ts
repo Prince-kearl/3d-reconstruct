@@ -27,6 +27,10 @@ export function modelPath(userId: string, projectId: string, format: string) {
   return objectPath(userId, projectId, "models", `model.${format}`);
 }
 
+export function multiViewPath(userId: string, projectId: string, angle: string) {
+  return objectPath(userId, projectId, "views", `${angle}.png`);
+}
+
 export async function uploadObject(path: string, blob: Blob, contentType: string): Promise<string> {
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
     contentType,
@@ -46,7 +50,7 @@ export async function getSignedUrl(path: string): Promise<string> {
 
 export async function removeProjectFolder(userId: string, projectId: string): Promise<void> {
   const prefix = objectPath(userId, projectId);
-  const subfolders = ["source", "depth", "masks", "thumbnails", "models"];
+  const subfolders = ["source", "depth", "masks", "thumbnails", "models", "views"];
   for (const folder of subfolders) {
     const { data: files } = await supabase.storage.from(BUCKET).list(`${prefix}/${folder}`);
     if (files?.length) {

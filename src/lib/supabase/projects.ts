@@ -20,6 +20,9 @@ export interface ProjectRow {
   vertex_count: number | null;
   face_count: number | null;
   reconstruction_settings: Record<string, unknown>;
+  multi_view_status: string | null;
+  multi_view_paths: Record<string, unknown>;
+  multi_view_meta: Record<string, unknown>;
   error_message: string | null;
   created_at: string;
   updated_at: string;

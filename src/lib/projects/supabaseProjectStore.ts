@@ -18,22 +18,40 @@ import {
   getSignedUrl,
   maskPath,
   modelPath,
+  multiViewPath,
   removeProjectFolder,
   sourceImagePath,
   thumbnailPath,
   uploadObject,
 } from "@/lib/supabase/storage";
-import type { Quality } from "@/stores/reconstructStore";
+import type { Quality, ReconstructionMode } from "@/stores/reconstructStore";
 
 import type {
+  MultiViewStoredStatus,
   ProjectCompleteInput,
   ProjectCreateInput,
   ProjectExportInput,
   ProjectMaskInput,
+  ProjectMultiViewInput,
   ProjectSettingsInput,
   ProjectStore,
   ProjectSummary,
+  StoredMultiViewEntry,
 } from "./types";
+
+interface StoredMultiViewPathEntry {
+  path: string;
+  width: number;
+  height: number;
+  confidence: number;
+  provider: string;
+  model: string;
+  generatedAt: number;
+}
+
+interface MultiViewMeta {
+  maskVersion?: string;
+}
 
 async function getCurrentUserId(): Promise<string> {
   const {
@@ -50,13 +68,38 @@ interface ReconstructionSettings {
   edgeFeather?: number;
   volume?: number;
   colorGrading?: ColorGrading;
+  reconstructionMode?: ReconstructionMode;
+}
+
+async function resolveMultiViewViews(
+  row: ProjectRow,
+): Promise<{ views: StoredMultiViewEntry[]; maskVersion: string | null }> {
+  const paths = row.multi_view_paths as Record<string, StoredMultiViewPathEntry>;
+  const entries = Object.entries(paths ?? {});
+  if (entries.length === 0) return { views: [], maskVersion: null };
+
+  const views = await Promise.all(
+    entries.map(async ([angle, entry]) => ({
+      angle,
+      imageUrl: await getSignedUrl(entry.path),
+      width: entry.width,
+      height: entry.height,
+      confidence: entry.confidence,
+      provider: entry.provider,
+      model: entry.model,
+      generatedAt: entry.generatedAt,
+    })),
+  );
+  const meta = row.multi_view_meta as MultiViewMeta;
+  return { views, maskVersion: meta?.maskVersion ?? null };
 }
 
 async function rowToSummary(row: ProjectRow): Promise<ProjectSummary> {
-  const [sourceImageUrl, thumbnailUrl, modelUrl] = await Promise.all([
+  const [sourceImageUrl, thumbnailUrl, modelUrl, multiView] = await Promise.all([
     row.source_image_path ? getSignedUrl(row.source_image_path) : Promise.resolve(""),
     row.thumbnail_path ? getSignedUrl(row.thumbnail_path) : Promise.resolve(null),
     row.model_path ? getSignedUrl(row.model_path) : Promise.resolve(null),
+    resolveMultiViewViews(row),
   ]);
   const settings = row.reconstruction_settings as ReconstructionSettings;
 
@@ -78,11 +121,15 @@ async function rowToSummary(row: ProjectRow): Promise<ProjectSummary> {
     edgeFeather: settings.edgeFeather ?? 25,
     volume: settings.volume ?? 0,
     colorGrading: settings.colorGrading ?? NEUTRAL_GRADING,
+    reconstructionMode: settings.reconstructionMode ?? "depth-only",
     vertexCount: row.vertex_count ?? 0,
     faceCount: row.face_count ?? 0,
     modelUrl,
     modelFormat: row.model_format,
     errorMessage: row.error_message,
+    multiViewStatus: (row.multi_view_status as MultiViewStoredStatus | null) ?? null,
+    multiViewViews: multiView.views,
+    multiViewMaskVersion: multiView.maskVersion,
   };
 }
 
@@ -194,6 +241,7 @@ export const supabaseProjectStore: ProjectStore = {
         edgeFeather: input.edgeFeather,
         volume: input.volume,
         colorGrading: input.colorGrading,
+        reconstructionMode: input.reconstructionMode,
       },
       error_message: null,
     });
@@ -226,6 +274,7 @@ export const supabaseProjectStore: ProjectStore = {
         edgeFeather: input.edgeFeather,
         volume: input.volume,
         colorGrading: input.colorGrading,
+        reconstructionMode: input.reconstructionMode,
       },
     });
   },
@@ -254,6 +303,43 @@ export const supabaseProjectStore: ProjectStore = {
       event_type: "silhouette_edited",
       metadata: { width: input.maskWidth, height: input.maskHeight },
     });
+  },
+
+  async saveMultiView(id, input: ProjectMultiViewInput) {
+    const userId = await getCurrentUserId();
+
+    const paths: Record<string, StoredMultiViewPathEntry> = {};
+    await Promise.all(
+      input.views.map(async (view) => {
+        const path = multiViewPath(userId, id, view.angle);
+        await uploadObject(path, view.blob, "image/png");
+        paths[view.angle] = {
+          path,
+          width: view.width,
+          height: view.height,
+          confidence: view.confidence,
+          provider: view.provider,
+          model: view.model,
+          generatedAt: Date.now(),
+        };
+      }),
+    );
+
+    await updateProject(id, {
+      multi_view_status: input.status,
+      multi_view_paths: paths,
+      multi_view_meta: { maskVersion: input.maskVersion },
+    });
+    await insertHistoryEvent({
+      project_id: id,
+      user_id: userId,
+      event_type: "multiview_generated",
+      metadata: { status: input.status, angles: input.views.map((v) => v.angle) },
+    });
+  },
+
+  async markMultiViewStale(id) {
+    await updateProject(id, { multi_view_status: "stale" });
   },
 
   async rename(id, name) {

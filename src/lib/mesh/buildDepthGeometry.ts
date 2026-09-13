@@ -3,7 +3,14 @@ import * as THREE from "three";
 import type { DepthEstimationResult } from "@/lib/depth/types";
 import type { SegmentationResult } from "@/lib/segmentation/types";
 
+import {
+  estimateSilhouetteDepthProfile,
+  sampleProfileAtV,
+  type SideViewSilhouette,
+} from "./multiViewSilhouetteProfile";
 import { computeSilhouetteDistanceField } from "./silhouetteDistanceField";
+
+export type { SideViewSilhouette };
 
 export interface DepthMeshParams {
   /** 0-100. Maps to world-space displacement strength. */
@@ -156,6 +163,15 @@ function buildDisplacedPlane(
   return geometry;
 }
 
+/** Remaps a geometry's existing U range (assumed 0..1) into `[u0, u1]` — used to place a layer into its own half of a shared texture atlas. */
+function remapUvURange(geometry: THREE.BufferGeometry, u0: number, u1: number): void {
+  const uv = geometry.attributes["uv"] as THREE.BufferAttribute;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setX(i, u0 + uv.getX(i) * (u1 - u0));
+  }
+  uv.needsUpdate = true;
+}
+
 /** Concatenates a front and back layer (already trimmed + normaled) into one geometry. */
 function mergeShell(front: THREE.BufferGeometry, back: THREE.BufferGeometry): THREE.BufferGeometry {
   const merged = new THREE.BufferGeometry();
@@ -202,12 +218,28 @@ function mergeShell(front: THREE.BufferGeometry, back: THREE.BufferGeometry): TH
  * relief into a real volumetric shell (like a stamped medallion) so rotating
  * the model shows actual thickness instead of a flat card. Without a mask,
  * or with volume at 0, it stays a single displaced plane.
+ *
+ * When `sideViews` (real AI-generated ±30°/±45° silhouettes, see
+ * src/lib/multiview) are supplied, the back shell's thickness is no longer
+ * uniform — it's shaped per-row by `estimateSilhouetteDepthProfile`, a real
+ * shape-from-silhouette estimate instead of a flat taper. Omitting
+ * `sideViews` (the default) keeps this function byte-for-byte identical to
+ * the depth-only pipeline.
+ *
+ * When `uvAtlas` is also supplied (see src/lib/texture/buildMultiViewTextureAtlas),
+ * the front and back layers are remapped into their own half of that shared
+ * atlas texture instead of both sampling the same full-image UV — this is
+ * what lets the back layer show real view-aware blended appearance instead
+ * of a stretched copy of the front photo. Omitting it keeps both layers on
+ * the original shared UV (today's behavior, still the default).
  */
 export function buildDepthGeometry(
   depth: DepthEstimationResult,
   imageAspect: number,
   params: DepthMeshParams,
   mask?: SegmentationResult | null,
+  sideViews?: SideViewSilhouette[] | null,
+  uvAtlas?: { frontURange: [number, number]; backURange: [number, number] } | null,
 ): DepthMeshResult {
   const planeW = imageAspect >= 1 ? 2 : 2 * imageAspect;
   const planeH = imageAspect >= 1 ? 2 / imageAspect : 2;
@@ -252,15 +284,27 @@ export function buildDepthGeometry(
   const buildVolume = mask && params.volume > 0;
   if (buildVolume) {
     const volumeStrength = (params.volume / 100) * MAX_VOLUME_WORLD;
+    const validSideViews = (sideViews ?? []).filter((s) => s.mask);
+    const depthProfile =
+      validSideViews.length > 0
+        ? estimateSilhouetteDepthProfile(mask, validSideViews, params.segments + 1)
+        : null;
+
     const backGeometry = buildDisplacedPlane(
       params.segments,
       planeW,
       planeH,
-      (u, v) => -volumeStrength * taperAt(u, v),
+      (u, v) =>
+        -volumeStrength * taperAt(u, v) * (depthProfile ? sampleProfileAtV(depthProfile, v) : 1),
       true,
     );
     trimBackgroundTriangles(backGeometry, mask);
     backGeometry.computeVertexNormals();
+
+    if (uvAtlas) {
+      remapUvURange(frontGeometry, uvAtlas.frontURange[0], uvAtlas.frontURange[1]);
+      remapUvURange(backGeometry, uvAtlas.backURange[0], uvAtlas.backURange[1]);
+    }
 
     shellGeometry = mergeShell(frontGeometry, backGeometry);
     frontGeometry.dispose();

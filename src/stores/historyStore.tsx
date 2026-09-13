@@ -60,6 +60,12 @@ const EVENT_INFO: Record<
     stage: "Refine",
     note: () => "Manual mask touch-up saved",
   },
+  multiview_generated: {
+    name: "Multi-View Generated",
+    stage: "Refine",
+    note: (m) =>
+      `${String(m["status"] ?? "?")} — ${Array.isArray(m["angles"]) ? m["angles"].length : 0} angles`,
+  },
 };
 
 /** Shared with the Console page's activity feed, so event labels stay consistent. */
