@@ -21,6 +21,19 @@ function emptyMask(): SegmentationResult {
   return { width: WIDTH, height: HEIGHT, data: new Float32Array(WIDTH * HEIGHT) };
 }
 
+/** A mask where each row gets its own foreground span — for testing row-to-row noise. */
+function rowsMask(spans: number[]): SegmentationResult {
+  const height = spans.length;
+  const data = new Float32Array(WIDTH * height);
+  for (let y = 0; y < height; y++) {
+    const span = spans[y]!;
+    for (let x = 0; x < span && x < WIDTH; x++) {
+      data[y * WIDTH + x] = 1;
+    }
+  }
+  return { width: WIDTH, height, data };
+}
+
 describe("estimateSilhouetteDepthProfile (shape-from-silhouette)", () => {
   it("returns a uniform profile of 1s (today's flat taper) when no side views are given", () => {
     const front = bandMask(50, 25);
@@ -86,6 +99,39 @@ describe("estimateSilhouetteDepthProfile (shape-from-silhouette)", () => {
     );
     // Different inputs should generally produce a different (averaged) result.
     expect(Array.from(profileTwoViews)).not.toEqual(Array.from(profileOneView));
+  });
+
+  it("smooths away a single noisy row instead of letting it produce a sharp Z spike", () => {
+    // A real segmentation mask is noisy row-to-row (a stray hair strand, a
+    // collar wrinkle) in a way a clean test mask never is — this simulates
+    // one such outlier row sitting among otherwise-uniform neighbors.
+    const spans = new Array(21).fill(50);
+    spans[10] = 95; // one wildly outlying row, everything else uniform
+    const front = rowsMask(spans);
+    const side = bandMask(60, 20);
+    const sideViews = [{ angleDegrees: 30, mask: side }];
+
+    const profile = estimateSilhouetteDepthProfile(front, sideViews, 21);
+    const uniformNeighborValue = profile[9]!; // untouched neighboring row
+    const outlierValue = profile[10]!;
+
+    // The outlier is pulled toward its neighbors, not left as an isolated spike.
+    expect(Math.abs(outlierValue - uniformNeighborValue)).toBeLessThan(0.3);
+  });
+
+  it("keeps a hard zero at rows with no front foreground even after smoothing (a real silhouette boundary, not noise)", () => {
+    // Profile index r samples mask row (height-1-r) — see rowForegroundWidthFraction's
+    // v convention — so zeroing mask rows [0,5] makes profile rows [15,20] the empty ones.
+    const spans = new Array(21).fill(50);
+    for (let i = 0; i <= 5; i++) spans[i] = 0; // subject ends partway down
+    const front = rowsMask(spans);
+    const side = bandMask(60, 20);
+    const profile = estimateSilhouetteDepthProfile(front, [{ angleDegrees: 30, mask: side }], 21);
+    for (let i = 15; i < 21; i++) {
+      expect(profile[i]).toBe(0);
+    }
+    // A valid row well away from that boundary is unaffected.
+    expect(profile[0]).toBeGreaterThan(0);
   });
 });
 

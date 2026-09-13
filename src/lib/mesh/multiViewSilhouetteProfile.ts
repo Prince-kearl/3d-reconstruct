@@ -12,6 +12,19 @@ const MIN_RATIO = 0.3;
 const MAX_RATIO = 2.5;
 
 /**
+ * Rows on each side to average over when smoothing the raw per-row profile.
+ * A real segmentation mask is noisy row-to-row (a stray hair strand, a
+ * collar wrinkle, jpeg/model artifacts can shift a row's measured min/maxX
+ * by several pixels) in a way a clean synthetic test mask never is — without
+ * smoothing, that noise turns directly into sharp per-row Z jumps in the
+ * back shell, which tears whatever texture is mapped across the resulting
+ * near-vertical "steps" into a sheared, duplicated-looking mess. Smoothing
+ * is the fix: the profile only needs to vary gradually along the body, not
+ * pixel-row by pixel-row.
+ */
+const PROFILE_SMOOTHING_RADIUS = 5;
+
+/**
  * Foreground column extent (pixel indices, inclusive) of one mask row, or
  * null if the row has no foreground at all. Shared with the texture-blending
  * pipeline (src/lib/texture), which needs each row's actual silhouette span
@@ -66,11 +79,14 @@ export function estimateSilhouetteDepthProfile(
   );
   if (usable.length === 0) return profile;
 
+  const hasNoFront = new Array<boolean>(rows).fill(false);
+
   for (let r = 0; r < rows; r++) {
     const v = rows > 1 ? r / (rows - 1) : 0.5;
     const frontWidth = rowForegroundWidthFraction(frontMask, v);
     if (frontWidth <= 0) {
       profile[r] = 0;
+      hasNoFront[r] = true;
       continue;
     }
 
@@ -91,7 +107,33 @@ export function estimateSilhouetteDepthProfile(
     }
     profile[r] = count > 0 ? Math.max(MIN_RATIO, Math.min(MAX_RATIO, sumRatio / count)) : 1;
   }
-  return profile;
+
+  return smoothProfile(profile, hasNoFront);
+}
+
+/**
+ * Moving-average smoothing over the valid (has-front-foreground) rows only —
+ * rows with no front foreground stay hard-zero (that boundary is real, not
+ * noise) rather than being blurred into their neighbors.
+ */
+function smoothProfile(profile: Float32Array, hasNoFront: boolean[]): Float32Array {
+  const out = new Float32Array(profile.length);
+  for (let i = 0; i < profile.length; i++) {
+    if (hasNoFront[i]) {
+      out[i] = 0;
+      continue;
+    }
+    let sum = 0;
+    let count = 0;
+    for (let d = -PROFILE_SMOOTHING_RADIUS; d <= PROFILE_SMOOTHING_RADIUS; d++) {
+      const j = i + d;
+      if (j < 0 || j >= profile.length || hasNoFront[j]) continue;
+      sum += profile[j]!;
+      count++;
+    }
+    out[i] = count > 0 ? sum / count : profile[i]!;
+  }
+  return out;
 }
 
 /** `v` uses the same convention the profile was built with: index r <-> v = r/(rows-1). */
