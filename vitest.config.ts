@@ -12,7 +12,7 @@ export default defineConfig({
     include: [
       "src/lib/multiview/**/*.test.ts",
       "src/lib/mesh/multiViewSilhouetteProfile.test.ts",
-      "src/lib/mesh/buildDepthGeometry.test.ts",
+      "src/lib/mesh/**/*.test.ts",
       "src/lib/texture/**/*.test.ts",
       "src/lib/importedAssets/**/*.test.ts",
     ],

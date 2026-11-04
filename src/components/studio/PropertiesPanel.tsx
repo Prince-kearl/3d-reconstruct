@@ -1,8 +1,9 @@
 import { Upload } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import * as THREE from "three";
 
+import { EngravingExportControls } from "@/components/engraving/EngravingExportControls";
 import { buildExportBlob, downloadBlob, type ExportFormat } from "@/lib/mesh/exportMesh";
 import {
   DEFAULT_RELIEF_BACK_COLOR,
@@ -42,6 +43,38 @@ export function PropertiesPanel() {
   const [format, setFormat] = useState<ExportFormat>("glb");
   const [exportScaleCm, setExportScaleCm] = useState("20.0");
   const ready = s.status === "ready" && s.geometry && s.texture;
+
+  const createEngravingSource = useCallback(() => {
+    if (!s.geometry || !s.texture) return null;
+    const frontMaterial = new THREE.MeshStandardMaterial({
+      map: s.texture,
+      transparent: true,
+      side: THREE.FrontSide,
+    });
+    const hasBackSurface = hasReliefBackSurface(s.geometry);
+    const backUsesTexture = reliefBackUsesTexture(s.geometry);
+    const backMaterial = hasBackSurface
+      ? new THREE.MeshStandardMaterial({
+          map: backUsesTexture ? s.texture : null,
+          color: backUsesTexture ? "#ffffff" : DEFAULT_RELIEF_BACK_COLOR,
+          transparent: backUsesTexture,
+          side: THREE.FrontSide,
+        })
+      : null;
+    const mesh = new THREE.Mesh(
+      s.geometry,
+      backMaterial ? [frontMaterial, backMaterial] : frontMaterial,
+    );
+    mesh.scale.setScalar(s.scale);
+    mesh.rotation.y = (s.rotationY * Math.PI) / 180;
+    return {
+      object: mesh,
+      dispose: () => {
+        frontMaterial.dispose();
+        backMaterial?.dispose();
+      },
+    };
+  }, [s.geometry, s.texture, s.scale, s.rotationY]);
 
   const modelInfo = [
     { label: "Vertices", value: s.vertexCount.toLocaleString() },
@@ -271,6 +304,13 @@ export function PropertiesPanel() {
               </div>
             </div>
           </CollapsibleSection>
+
+          <EngravingExportControls
+            createSource={createEngravingSource}
+            sourceName={s.sourceFileName ?? "model"}
+            sourceKind="photo-relief"
+            disabled={!ready}
+          />
 
           <div className="px-[14px] py-[13px]">
             <button

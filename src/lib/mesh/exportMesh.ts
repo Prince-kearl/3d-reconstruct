@@ -3,7 +3,17 @@ import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import * as THREE from "three";
 
+import { buildEngravingMarkGeometry, type EngravingMarkOptions } from "./buildEngravingMarks";
+
 export type ExportFormat = "obj" | "glb" | "stl";
+
+export interface LaserEngravingExport {
+  blob: Blob;
+  markCount: number;
+  triangleCount: number;
+  dimensionsMm: [number, number, number];
+  sampledSurfaceAreaMm2: number;
+}
 
 export function downloadBlob(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
@@ -33,6 +43,31 @@ export async function buildExportBlob(mesh: THREE.Mesh, format: ExportFormat): P
   const exporter = new GLTFExporter();
   const result = await exporter.parseAsync(mesh, { binary: true });
   return new Blob([result as ArrayBuffer], { type: "model/gltf-binary" });
+}
+
+/** Creates an STL containing discrete tetrahedral micro-marks on visible model surfaces. */
+export function buildLaserEngravingSTL(
+  source: THREE.Object3D,
+  options: EngravingMarkOptions,
+): LaserEngravingExport {
+  const result = buildEngravingMarkGeometry(source, options);
+  const mesh = new THREE.Mesh(
+    result.geometry,
+    new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }),
+  );
+  try {
+    const stl = new STLExporter().parse(mesh, { binary: true });
+    return {
+      blob: new Blob([stl], { type: "model/stl" }),
+      markCount: result.markCount,
+      triangleCount: result.triangleCount,
+      dimensionsMm: result.dimensionsMm,
+      sampledSurfaceAreaMm2: result.sampledSurfaceAreaMm2,
+    };
+  } finally {
+    result.geometry.dispose();
+    (mesh.material as THREE.Material).dispose();
+  }
 }
 
 /** Builds and downloads the export in one step. */

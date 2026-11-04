@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { AppShell } from "@/components/studio/AppShell";
 import { WorkspaceTabsToolbar } from "@/components/studio/WorkspaceTabsToolbar";
+import { EngravingExportControls } from "@/components/engraving/EngravingExportControls";
 import {
   disposeImportedObject,
   loadImportedModel,
@@ -52,7 +53,13 @@ function ImportedModelCanvas({ object }: { object: THREE.Group }) {
   );
 }
 
-function ImportedProjectDetails({ project }: { project: ProjectRecord | null }) {
+function ImportedProjectDetails({
+  project,
+  model,
+}: {
+  project: ProjectRecord | null;
+  model: THREE.Group | null;
+}) {
   const info = project?.importedAsset;
   const primaryFile = info?.files.find((file) => file.name === info.primaryFileName);
   const rows = info
@@ -65,6 +72,13 @@ function ImportedProjectDetails({ project }: { project: ProjectRecord | null }) 
         ["Faces", (project?.faceCount ?? 0).toLocaleString()],
       ]
     : [];
+  let hasTriangleSurface = false;
+  model?.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (mesh.isMesh && (mesh.geometry.getAttribute("position")?.count ?? 0) >= 3) {
+      hasTriangleSurface = true;
+    }
+  });
 
   return (
     <aside className="scroll-thin flex h-full w-full shrink-0 flex-col overflow-y-auto bg-panel lg:border-l lg:border-line">
@@ -85,6 +99,18 @@ function ImportedProjectDetails({ project }: { project: ProjectRecord | null }) 
               </div>
             ))}
           </div>
+          <EngravingExportControls
+            createSource={() => (model ? { object: model } : null)}
+            sourceName={info.primaryFileName}
+            sourceKind="complete-model"
+            disabled={!hasTriangleSurface}
+          />
+          {info.format.toLowerCase() === "dxf" && !hasTriangleSurface ? (
+            <p className="mx-[14px] mt-[10px] rounded-[4px] border border-line bg-surface px-[9px] py-[8px] text-[10px] leading-[15px] text-txt-dim">
+              Laser engraving export needs triangle surfaces. This DXF contains linework only;
+              import a 3D mesh or a DXF with 3DFACE entities.
+            </p>
+          ) : null}
           {primaryFile ? (
             <a
               href={primaryFile.url}
@@ -203,7 +229,12 @@ function ImportedProjectPage() {
           onTabChange={() => {}}
         />
       }
-      properties={<ImportedProjectDetails project={isImported ? project : null} />}
+      properties={
+        <ImportedProjectDetails
+          project={isImported ? project : null}
+          model={isImported ? model : null}
+        />
+      }
       workspace={
         <section className="viewport-surface relative flex min-h-[320px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-line bg-panel">
           <div className="absolute left-[14px] top-[12px] z-10 max-w-[70%] truncate rounded-[4px] border border-line bg-panel/90 px-[8px] py-[5px] text-[10.5px] text-txt-muted">
