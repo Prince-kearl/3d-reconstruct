@@ -3,12 +3,29 @@ import type { Quality, ReconstructionMode } from "@/stores/reconstructStore";
 
 export type ProjectStatus = "processing" | "completed" | "failed";
 
+export interface ImportedAssetFileRef {
+  name: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface ImportedAssetInfo {
+  primaryFileName: string;
+  format: string;
+  mimeType: string;
+  sizeBytes: number;
+  files: ImportedAssetFileRef[];
+}
+
 export interface ProjectRecord {
   id: string;
   name: string;
   status: ProjectStatus;
   createdAt: number;
   updatedAt: number;
+  projectKind: "reconstruction" | "imported";
+  importedAsset: ImportedAssetInfo | null;
 
   sourceImageUrl: string;
   imageWidth: number;
@@ -73,6 +90,16 @@ export interface ProjectCreateInput {
   imageHeight: number;
 }
 
+export interface ProjectImportInput {
+  id: string;
+  name: string;
+  primaryFileName: string;
+  format: string;
+  files: { name: string; file: Blob; mimeType: string }[];
+  vertexCount: number;
+  faceCount: number;
+}
+
 export interface ProjectCompleteInput {
   depthData: Float32Array;
   depthWidth: number;
@@ -135,6 +162,7 @@ export interface ProjectStore {
   get(id: string): Promise<ProjectRecord | null>;
   getMostRecent(): Promise<ProjectSummary | null>;
   create(input: ProjectCreateInput): Promise<void>;
+  importAsset(input: ProjectImportInput): Promise<void>;
   complete(id: string, input: ProjectCompleteInput): Promise<void>;
   markFailed(id: string, message: string): Promise<void>;
   updateSettings(id: string, input: ProjectSettingsInput): Promise<void>;

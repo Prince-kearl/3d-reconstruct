@@ -14,6 +14,7 @@ export default defineConfig({
       "src/lib/mesh/multiViewSilhouetteProfile.test.ts",
       "src/lib/mesh/buildDepthGeometry.test.ts",
       "src/lib/texture/**/*.test.ts",
+      "src/lib/importedAssets/**/*.test.ts",
     ],
   },
 });

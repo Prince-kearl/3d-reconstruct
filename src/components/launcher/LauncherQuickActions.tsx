@@ -12,12 +12,14 @@ export function LauncherQuickActions({
   onRecover,
   projectCount,
   mostRecentProjectId,
+  mostRecentProjectKind,
 }: {
   onNewProject: () => void;
   onImport: () => void;
   onRecover: () => void;
   projectCount: number;
   mostRecentProjectId: string | null;
+  mostRecentProjectKind: "reconstruction" | "imported" | null;
 }) {
   const navigate = useNavigate();
 
@@ -36,9 +38,11 @@ export function LauncherQuickActions({
       primary: false,
       onClick: () =>
         void navigate(
-          mostRecentProjectId
-            ? { to: "/reconstruct", search: { project: mostRecentProjectId } }
-            : { to: "/reconstruct" },
+          mostRecentProjectId && mostRecentProjectKind === "imported"
+            ? { to: "/imported", search: { project: mostRecentProjectId } }
+            : mostRecentProjectId
+              ? { to: "/reconstruct", search: { project: mostRecentProjectId } }
+              : { to: "/reconstruct" },
         ),
     },
     { label: "Recover Autosave", hint: "", primary: false, onClick: onRecover },

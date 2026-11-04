@@ -4,7 +4,6 @@ import { decodeMask } from "@/lib/segmentation";
 import { supabase } from "@/lib/supabase/client";
 import {
   deleteProject,
-  getMostRecentProject,
   getProject,
   insertHistoryEvent,
   insertProject,
@@ -16,6 +15,7 @@ import {
 import {
   depthMapPath,
   getSignedUrl,
+  importedAssetPath,
   maskPath,
   modelPath,
   multiViewPath,
@@ -31,6 +31,7 @@ import type {
   ProjectCompleteInput,
   ProjectCreateInput,
   ProjectExportInput,
+  ProjectImportInput,
   ProjectMaskInput,
   ProjectMultiViewInput,
   ProjectSettingsInput,
@@ -62,6 +63,14 @@ async function getCurrentUserId(): Promise<string> {
 }
 
 interface ReconstructionSettings {
+  kind?: string;
+  importedAsset?: {
+    primaryFileName: string;
+    format: string;
+    mimeType: string;
+    sizeBytes: number;
+    files: { path: string; name: string; mimeType: string; sizeBytes: number }[];
+  };
   quality?: Quality;
   detail?: number;
   smoothing?: number;
@@ -95,13 +104,25 @@ async function resolveMultiViewViews(
 }
 
 async function rowToSummary(row: ProjectRow): Promise<ProjectSummary> {
-  const [sourceImageUrl, thumbnailUrl, modelUrl, multiView] = await Promise.all([
+  const settings = row.reconstruction_settings as ReconstructionSettings;
+  const importMeta = settings.importedAsset;
+  const isImported = settings.kind === "imported-asset" && Boolean(row.model_path && importMeta);
+  const [sourceImageUrl, thumbnailUrl, modelUrl, multiView, importedFiles] = await Promise.all([
     row.source_image_path ? getSignedUrl(row.source_image_path) : Promise.resolve(""),
     row.thumbnail_path ? getSignedUrl(row.thumbnail_path) : Promise.resolve(null),
     row.model_path ? getSignedUrl(row.model_path) : Promise.resolve(null),
     resolveMultiViewViews(row),
+    isImported && importMeta
+      ? Promise.all(
+          importMeta.files.map(async (file) => ({
+            name: file.name,
+            url: await getSignedUrl(file.path),
+            mimeType: file.mimeType,
+            sizeBytes: file.sizeBytes,
+          })),
+        )
+      : Promise.resolve([]),
   ]);
-  const settings = row.reconstruction_settings as ReconstructionSettings;
 
   return {
     id: row.id,
@@ -109,6 +130,25 @@ async function rowToSummary(row: ProjectRow): Promise<ProjectSummary> {
     status: row.status,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
+    projectKind: isImported ? "imported" : "reconstruction",
+    importedAsset:
+      isImported && importMeta && modelUrl
+        ? {
+            primaryFileName: importMeta.primaryFileName,
+            format: importMeta.format,
+            mimeType: importMeta.mimeType,
+            sizeBytes: importMeta.sizeBytes,
+            files: [
+              {
+                name: importMeta.primaryFileName,
+                url: modelUrl,
+                mimeType: importMeta.mimeType,
+                sizeBytes: importMeta.sizeBytes,
+              },
+              ...importedFiles,
+            ],
+          }
+        : null,
     sourceImageUrl,
     imageWidth: row.image_width ?? 0,
     imageHeight: row.image_height ?? 0,
@@ -140,7 +180,13 @@ export const supabaseProjectStore: ProjectStore = {
   },
 
   async getMostRecent() {
-    const row = await getMostRecentProject();
+    const rows = await listProjects();
+    const row = rows
+      .filter((candidate) => {
+        const settings = candidate.reconstruction_settings as ReconstructionSettings;
+        return settings.kind !== "imported-asset";
+      })
+      .sort((a, b) => Date.parse(b.last_opened_at) - Date.parse(a.last_opened_at))[0];
     return row ? rowToSummary(row) : null;
   },
 
@@ -148,6 +194,16 @@ export const supabaseProjectStore: ProjectStore = {
     const row = await getProject(id);
     if (!row) return null;
     const summary = await rowToSummary(row);
+
+    if (summary.projectKind === "imported") {
+      return {
+        ...summary,
+        depthData: new Float32Array(0),
+        maskData: null,
+        maskWidth: 0,
+        maskHeight: 0,
+      };
+    }
 
     if (!row.depth_map_path) {
       return {
@@ -210,6 +266,80 @@ export const supabaseProjectStore: ProjectStore = {
         metadata: {},
       }),
     ]);
+  },
+
+  async importAsset(input: ProjectImportInput) {
+    const userId = await getCurrentUserId();
+    const primary = input.files.find((file) => file.name === input.primaryFileName);
+    if (!primary) throw new Error(`The selected model file "${input.primaryFileName}" is missing.`);
+
+    const primaryPath = modelPath(userId, input.id, input.format);
+    const companions = input.files
+      .filter((file) => file !== primary)
+      .map((file, index) => ({
+        ...file,
+        path: importedAssetPath(userId, input.id, file.name, index),
+      }));
+
+    try {
+      const uploads = await Promise.allSettled([
+        uploadObject(primaryPath, primary.file, primary.mimeType || "application/octet-stream"),
+        ...companions.map((file) =>
+          uploadObject(file.path, file.file, file.mimeType || "application/octet-stream"),
+        ),
+      ]);
+      const failedUpload = uploads.find((result) => result.status === "rejected");
+      if (failedUpload?.status === "rejected") throw failedUpload.reason;
+
+      await insertProject({
+        id: input.id,
+        user_id: userId,
+        name: input.name,
+        status: "completed",
+        model_path: primaryPath,
+        model_format: input.format,
+        vertex_count: input.vertexCount,
+        face_count: input.faceCount,
+        reconstruction_settings: {
+          kind: "imported-asset",
+          importedAsset: {
+            primaryFileName: input.primaryFileName,
+            format: input.format,
+            mimeType: primary.mimeType || "application/octet-stream",
+            sizeBytes: primary.file.size,
+            files: companions.map((file) => ({
+              path: file.path,
+              name: file.name,
+              mimeType: file.mimeType || "application/octet-stream",
+              sizeBytes: file.file.size,
+            })),
+          },
+        },
+      });
+    } catch (error) {
+      await removeProjectFolder(userId, input.id).catch(() => {});
+      throw error;
+    }
+
+    try {
+      await insertHistoryEvent({
+        project_id: input.id,
+        user_id: userId,
+        event_type: "asset_imported",
+        metadata: {
+          format: input.format,
+          fileName: input.primaryFileName,
+          sizeBytes: primary.file.size,
+          vertexCount: input.vertexCount,
+          faceCount: input.faceCount,
+        },
+      });
+    } catch (error) {
+      console.warn(
+        "The imported project was saved, but its history event could not be recorded.",
+        error,
+      );
+    }
   },
 
   async complete(id, input: ProjectCompleteInput) {

@@ -27,6 +27,25 @@ export function modelPath(userId: string, projectId: string, format: string) {
   return objectPath(userId, projectId, "models", `model.${format}`);
 }
 
+export function importedAssetPath(
+  userId: string,
+  projectId: string,
+  fileName: string,
+  sequence: number,
+) {
+  const safeName = fileName
+    .split(/[\\/]/)
+    .pop()!
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .slice(0, 128);
+  return objectPath(
+    userId,
+    projectId,
+    "imported",
+    `asset-${sequence.toString().padStart(4, "0")}-${safeName || "asset.bin"}`,
+  );
+}
+
 export function multiViewPath(userId: string, projectId: string, angle: string) {
   return objectPath(userId, projectId, "views", `${angle}.png`);
 }
@@ -50,11 +69,24 @@ export async function getSignedUrl(path: string): Promise<string> {
 
 export async function removeProjectFolder(userId: string, projectId: string): Promise<void> {
   const prefix = objectPath(userId, projectId);
-  const subfolders = ["source", "depth", "masks", "thumbnails", "models", "views"];
+  const subfolders = ["source", "depth", "masks", "thumbnails", "models", "views", "imported"];
+  const storage = supabase.storage.from(BUCKET);
+  const pageSize = 1000;
   for (const folder of subfolders) {
-    const { data: files } = await supabase.storage.from(BUCKET).list(`${prefix}/${folder}`);
-    if (files?.length) {
-      await supabase.storage.from(BUCKET).remove(files.map((f) => `${prefix}/${folder}/${f.name}`));
+    const folderPath = `${prefix}/${folder}`;
+    const filePaths: string[] = [];
+    let offset = 0;
+    while (true) {
+      const { data: files, error } = await storage.list(folderPath, { limit: pageSize, offset });
+      if (error) throw error;
+      const page = files ?? [];
+      filePaths.push(...page.map((file) => `${folderPath}/${file.name}`));
+      if (page.length < pageSize) break;
+      offset += page.length;
+    }
+    for (let index = 0; index < filePaths.length; index += pageSize) {
+      const { error } = await storage.remove(filePaths.slice(index, index + pageSize));
+      if (error) throw error;
     }
   }
 }

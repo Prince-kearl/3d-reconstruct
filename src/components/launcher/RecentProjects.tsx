@@ -1,12 +1,12 @@
 import { LayoutGrid, List, Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 
 import type { ProjectStatus, ProjectSummary } from "@/lib/projects";
 import { useAuth } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
 import { IconButton } from "@/components/studio/primitives";
+import { ProjectOpenLink } from "@/components/launcher/ProjectOpenLink";
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
   processing: "border-accent/50 bg-accent/15 text-accent-2",
@@ -58,8 +58,9 @@ export function RecentProjects({
               Welcome back{user?.email ? `, ${user.email}` : ""}
             </h1>
             <p className="mt-[5px] max-w-[520px] text-[11.5px] leading-[18px] text-txt-muted">
-              Turn a photo into a rotatable pseudo-3D depth relief. Pick up a recent project or
-              start a new reconstruction.
+              Reconstruct a photo or import STL, OBJ/MTL, GLB/glTF, PLY, 3MF, and DXF drawings.
+              Select OBJ/glTF sidecars together; DXF is a supported-linework preview, not a full CAD
+              round-trip.
             </p>
             <div className="home-project-actions mt-[12px] flex items-center gap-[8px]">
               <button
@@ -71,13 +72,12 @@ export function RecentProjects({
                 <Sparkles className="size-[13px]" /> New Project
               </button>
               {mostRecent ? (
-                <Link
-                  to="/reconstruct"
-                  search={{ project: mostRecent.id }}
+                <ProjectOpenLink
+                  project={mostRecent}
                   className="home-continue-link flex h-[44px] min-w-0 items-center rounded-[5px] border border-line bg-surface px-[14px] text-[11.5px] text-txt-muted hover:text-txt sm:h-[30px]"
                 >
                   Continue "{mostRecent.name}"
-                </Link>
+                </ProjectOpenLink>
               ) : null}
             </div>
           </div>
@@ -143,7 +143,7 @@ export function RecentProjects({
           {items.length === 0 ? (
             <p className="py-[40px] text-center text-[11.5px] text-txt-dim">
               {projects.length === 0
-                ? "No projects yet — start a new reconstruction."
+                ? "No projects yet — import a model or start a reconstruction."
                 : `No projects match "${query}".`}
             </p>
           ) : (
@@ -177,22 +177,25 @@ export function RecentProjects({
                       </span>
                     </div>
                     <p className="mt-[7px] text-[10px] text-txt-muted">
-                      {p.vertexCount ? `${p.vertexCount.toLocaleString()} vertices` : "—"}
+                      {p.projectKind === "imported"
+                        ? `${p.importedAsset?.format.toUpperCase() ?? "Imported"} model`
+                        : p.vertexCount
+                          ? `${p.vertexCount.toLocaleString()} vertices`
+                          : "—"}
                     </p>
                     <p className="mt-[3px] text-[9.5px] text-txt-dim">
                       Updated {formatDistanceToNow(p.updatedAt, { addSuffix: true })}
                     </p>
                   </div>
-                  <Link
-                    to="/reconstruct"
-                    search={{ project: p.id }}
+                  <ProjectOpenLink
+                    project={p}
                     className={cn(
                       "mt-[10px] flex h-[26px] items-center justify-center rounded-[4px] border border-line bg-panel text-[11px] text-txt-muted hover:text-txt",
                       view === "list" ? "mt-0 w-[86px] shrink-0" : "w-full",
                     )}
                   >
                     Open
-                  </Link>
+                  </ProjectOpenLink>
                 </article>
               ))}
             </div>

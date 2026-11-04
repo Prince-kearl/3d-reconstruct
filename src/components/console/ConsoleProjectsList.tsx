@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
+import { ProjectOpenLink } from "@/components/launcher/ProjectOpenLink";
 import { projectStore, type ProjectStatus } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 
@@ -33,9 +33,8 @@ export function ConsoleProjectsList() {
           <ul className="space-y-[6px]">
             {projects.map((p) => (
               <li key={p.id}>
-                <Link
-                  to="/reconstruct"
-                  search={{ project: p.id }}
+                <ProjectOpenLink
+                  project={p}
                   className="flex items-center gap-[10px] rounded-[5px] border border-line bg-surface px-[10px] py-[8px] transition-colors hover:bg-surface-2"
                 >
                   <div className="size-[36px] shrink-0 overflow-hidden rounded-[4px] border border-line bg-panel">
@@ -51,6 +50,9 @@ export function ConsoleProjectsList() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[11.5px] text-txt">{p.name}</p>
                     <p className="text-[10px] text-txt-dim">
+                      {p.projectKind === "imported"
+                        ? `${p.importedAsset?.format.toUpperCase() ?? "Imported"} model · `
+                        : ""}
                       {new Date(p.updatedAt).toLocaleString([], {
                         dateStyle: "medium",
                         timeStyle: "short",
@@ -65,7 +67,7 @@ export function ConsoleProjectsList() {
                   >
                     {p.status}
                   </span>
-                </Link>
+                </ProjectOpenLink>
               </li>
             ))}
           </ul>

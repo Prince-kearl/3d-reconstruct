@@ -28,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { AppShell } from "@/components/studio/AppShell";
+import { ProjectOpenLink } from "@/components/launcher/ProjectOpenLink";
 import { CollapsibleSection, FieldLabel } from "@/components/studio/primitives";
 import { WorkspaceTabsToolbar } from "@/components/studio/WorkspaceTabsToolbar";
 import { projectStore, type ProjectStatus, type ProjectSummary } from "@/lib/projects";
@@ -55,6 +56,12 @@ export const Route = createFileRoute("/explorer")({
 });
 
 const RECENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
   processing: "border-accent/50 bg-accent/15 text-accent-2",
@@ -104,6 +111,29 @@ function ExplorerPage() {
 
   const active: ProjectSummary | null =
     projects.find((p) => p.id === selectedId) ?? visible[0] ?? null;
+
+  const detailRows: [string, string][] = active
+    ? active.projectKind === "imported"
+      ? [
+          ["Status", active.status],
+          ["Format", active.importedAsset?.format.toUpperCase() ?? "Imported"],
+          ["Original file", active.importedAsset?.primaryFileName ?? "—"],
+          ["File size", active.importedAsset ? formatBytes(active.importedAsset.sizeBytes) : "—"],
+          ["Created", new Date(active.createdAt).toLocaleString()],
+          ["Updated", formatDistanceToNow(active.updatedAt, { addSuffix: true })],
+          ["Vertices", active.vertexCount.toLocaleString()],
+          ["Faces", active.faceCount.toLocaleString()],
+        ]
+      : [
+          ["Status", active.status],
+          ["Created", new Date(active.createdAt).toLocaleString()],
+          ["Updated", formatDistanceToNow(active.updatedAt, { addSuffix: true })],
+          ["Resolution", `${active.imageWidth} × ${active.imageHeight}`],
+          ["Vertices", active.vertexCount.toLocaleString()],
+          ["Faces", active.faceCount.toLocaleString()],
+          ["Quality", active.quality],
+        ]
+    : [];
 
   const activity = useMemo(
     () =>
@@ -183,17 +213,7 @@ function ExplorerPage() {
                     </button>
                   )}
                 </div>
-                {(
-                  [
-                    ["Status", active.status],
-                    ["Created", new Date(active.createdAt).toLocaleString()],
-                    ["Updated", formatDistanceToNow(active.updatedAt, { addSuffix: true })],
-                    ["Resolution", `${active.imageWidth} × ${active.imageHeight}`],
-                    ["Vertices", active.vertexCount.toLocaleString()],
-                    ["Faces", active.faceCount.toLocaleString()],
-                    ["Quality", active.quality],
-                  ] as const
-                ).map(([k, v]) => (
+                {detailRows.map(([k, v]) => (
                   <div
                     key={k}
                     className="flex items-center justify-between gap-[10px] py-[3px] text-[11px]"
@@ -207,14 +227,13 @@ function ExplorerPage() {
                 ) : null}
               </CollapsibleSection>
               <div className="flex gap-[8px] px-[14px] py-[12px]">
-                <Link
-                  to="/reconstruct"
-                  search={{ project: active.id }}
+                <ProjectOpenLink
+                  project={active}
                   className="flex h-[30px] flex-1 items-center justify-center rounded-[4px] text-[11.5px] font-medium text-white transition-opacity hover:opacity-95"
                   style={{ background: "var(--gradient-accent)" }}
                 >
                   Open
-                </Link>
+                </ProjectOpenLink>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button
@@ -229,8 +248,8 @@ function ExplorerPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete "{active.name}"?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This permanently deletes the project and its stored photo, depth map, and
-                        exported models. This can't be undone.
+                        This permanently deletes the project and all of its stored source files and
+                        assets. This can't be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -380,7 +399,10 @@ function ExplorerPage() {
                           ) : null}
                         </span>
                         <span className="mt-[2px] block text-[10px] text-txt-dim">
-                          {p.vertexCount.toLocaleString()} verts •{" "}
+                          {p.projectKind === "imported"
+                            ? `${p.importedAsset?.format.toUpperCase() ?? "Imported"} model`
+                            : `${p.vertexCount.toLocaleString()} verts`}
+                          {" • "}
                           {formatDistanceToNow(p.updatedAt, { addSuffix: true })}
                         </span>
                       </span>

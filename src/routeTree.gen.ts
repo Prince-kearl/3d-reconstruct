@@ -14,6 +14,7 @@ import { Route as ConsoleRouteImport } from './routes/console'
 import { Route as ExplorerRouteImport } from './routes/explorer'
 import { Route as ExportRouteImport } from './routes/export'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as ImportedRouteImport } from './routes/imported'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ReconstructRouteImport } from './routes/reconstruct'
 import { Route as RefineRouteImport } from './routes/refine'
@@ -45,6 +46,11 @@ const ExportRoute = ExportRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportedRoute = ImportedRouteImport.update({
+  id: '/imported',
+  path: '/imported',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/imported': typeof ImportedRoute
   '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/imported': typeof ImportedRoute
   '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/explorer': typeof ExplorerRoute
   '/export': typeof ExportRoute
   '/history': typeof HistoryRoute
+  '/imported': typeof ImportedRoute
   '/login': typeof LoginRoute
   '/reconstruct': typeof ReconstructRoute
   '/refine': typeof RefineRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/imported'
     | '/login'
     | '/reconstruct'
     | '/refine'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/imported'
     | '/login'
     | '/reconstruct'
     | '/refine'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/export'
     | '/history'
+    | '/imported'
     | '/login'
     | '/reconstruct'
     | '/refine'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   ExplorerRoute: typeof ExplorerRoute
   ExportRoute: typeof ExportRoute
   HistoryRoute: typeof HistoryRoute
+  ImportedRoute: typeof ImportedRoute
   LoginRoute: typeof LoginRoute
   ReconstructRoute: typeof ReconstructRoute
   RefineRoute: typeof RefineRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imported': {
+      id: '/imported'
+      path: '/imported'
+      fullPath: '/imported'
+      preLoaderRoute: typeof ImportedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExplorerRoute: ExplorerRoute,
   ExportRoute: ExportRoute,
   HistoryRoute: HistoryRoute,
+  ImportedRoute: ImportedRoute,
   LoginRoute: LoginRoute,
   ReconstructRoute: ReconstructRoute,
   RefineRoute: RefineRoute,
