@@ -5,6 +5,11 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 import { CameraGizmo } from "./CameraGizmo";
+import {
+  DEFAULT_RELIEF_BACK_COLOR,
+  hasReliefBackSurface,
+  reliefBackUsesTexture,
+} from "@/lib/mesh/reliefSurface";
 
 export type ViewerMode = "solid" | "wireframe";
 export type DragMode = "rotate" | "pan";
@@ -142,6 +147,9 @@ export const DepthMeshViewer = forwardRef<
 ) {
   if (!geometry) return null;
 
+  const hasBackSurface = hasReliefBackSurface(geometry);
+  const backUsesTexture = reliefBackUsesTexture(geometry);
+
   const distance = 2.6;
   const rad = (azimuthDeg * Math.PI) / 180;
   const cameraPosition: [number, number, number] = [
@@ -163,17 +171,46 @@ export const DepthMeshViewer = forwardRef<
       <group scale={scale} rotation={[0, (rotationYDeg * Math.PI) / 180, 0]}>
         {mode === "wireframe" ? (
           <mesh geometry={geometry}>
-            <meshBasicMaterial color="#8b7bff" wireframe />
+            {hasBackSurface ? (
+              <>
+                <meshBasicMaterial attach="material-0" color="#8b7bff" wireframe />
+                <meshBasicMaterial attach="material-1" color="#8b7bff" wireframe />
+              </>
+            ) : (
+              <meshBasicMaterial color="#8b7bff" wireframe />
+            )}
           </mesh>
         ) : (
           <mesh geometry={geometry}>
-            <meshStandardMaterial
-              map={texture ?? null}
-              roughness={0.9}
-              metalness={0}
-              transparent
-              side={THREE.DoubleSide}
-            />
+            {hasBackSurface ? (
+              <>
+                <meshStandardMaterial
+                  attach="material-0"
+                  map={texture ?? null}
+                  roughness={0.9}
+                  metalness={0}
+                  transparent
+                  side={THREE.FrontSide}
+                />
+                <meshStandardMaterial
+                  attach="material-1"
+                  map={backUsesTexture ? texture : null}
+                  color={backUsesTexture ? "#ffffff" : DEFAULT_RELIEF_BACK_COLOR}
+                  roughness={0.9}
+                  metalness={0}
+                  transparent={backUsesTexture}
+                  side={THREE.FrontSide}
+                />
+              </>
+            ) : (
+              <meshStandardMaterial
+                map={texture ?? null}
+                roughness={0.9}
+                metalness={0}
+                transparent
+                side={THREE.FrontSide}
+              />
+            )}
           </mesh>
         )}
       </group>

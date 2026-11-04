@@ -9,6 +9,7 @@ import {
   type SideViewSilhouette,
 } from "./multiViewSilhouetteProfile";
 import { computeSilhouetteDistanceField } from "./silhouetteDistanceField";
+import { RELIEF_BACK_USES_TEXTURE_KEY } from "./reliefSurface";
 
 export type { SideViewSilhouette };
 
@@ -207,6 +208,8 @@ function mergeShell(front: THREE.BufferGeometry, back: THREE.BufferGeometry): TH
   for (let i = 0; i < fIndex.count; i++) indexArr[i] = fIndex.getX(i);
   for (let i = 0; i < bIndex.count; i++) indexArr[fIndex.count + i] = bIndex.getX(i) + offset;
   merged.setIndex(new THREE.BufferAttribute(indexArr, 1));
+  merged.addGroup(0, fIndex.count, 0);
+  merged.addGroup(fIndex.count, bIndex.count, 1);
 
   return merged;
 }
@@ -226,12 +229,10 @@ function mergeShell(front: THREE.BufferGeometry, back: THREE.BufferGeometry): TH
  * `sideViews` (the default) keeps this function byte-for-byte identical to
  * the depth-only pipeline.
  *
- * When `uvAtlas` is also supplied (see src/lib/texture/buildMultiViewTextureAtlas),
- * the front and back layers are remapped into their own half of that shared
- * atlas texture instead of both sampling the same full-image UV — this is
- * what lets the back layer show real view-aware blended appearance instead
- * of a stretched copy of the front photo. Omitting it keeps both layers on
- * the original shared UV (today's behavior, still the default).
+ * When `uvAtlas` is supplied (see src/lib/texture/buildMultiViewTextureAtlas),
+ * the front and back layers are remapped into their own atlas regions. Without
+ * a real multi-view atlas, the back has its own material group and is rendered
+ * as a neutral matte surface instead of repeating the front photo.
  */
 export function buildDepthGeometry(
   depth: DepthEstimationResult,
@@ -307,9 +308,12 @@ export function buildDepthGeometry(
     }
 
     shellGeometry = mergeShell(frontGeometry, backGeometry);
+    shellGeometry.userData[RELIEF_BACK_USES_TEXTURE_KEY] = Boolean(uvAtlas);
     frontGeometry.dispose();
     backGeometry.dispose();
   }
+
+  if (!buildVolume) shellGeometry.userData[RELIEF_BACK_USES_TEXTURE_KEY] = false;
 
   const finalIndex = shellGeometry.index;
   const referencedVertices = new Set<number>();

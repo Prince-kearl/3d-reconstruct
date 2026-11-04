@@ -5,6 +5,11 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
 import { CameraGizmo } from "@/components/studio/CameraGizmo";
+import {
+  DEFAULT_RELIEF_BACK_COLOR,
+  hasReliefBackSurface,
+  reliefBackUsesTexture,
+} from "@/lib/mesh/reliefSurface";
 
 export type CameraViewPreset = "front" | "three-quarter" | "side" | "top";
 
@@ -241,6 +246,9 @@ export const CrystalMeshViewer = forwardRef<
 
   if (!geometry || !block) return null;
 
+  const hasBackSurface = hasReliefBackSurface(geometry);
+  const backUsesTexture = reliefBackUsesTexture(geometry);
+
   const roughness = THREE.MathUtils.clamp(0.28 - (material.clarity / 100) * 0.26, 0.01, 0.28);
   const keyIntensity = (scene.keyLight / 100) * 2.4;
   const fillIntensity = (scene.fillLight / 100) * 1.4;
@@ -261,22 +269,39 @@ export const CrystalMeshViewer = forwardRef<
 
       {scene.showBust ? (
         <group position={[-block.center.x, -block.center.y, -block.center.z]}>
-          {/* The real photo-textured bust, unchanged from the rest of the app.
-              FrontSide (not DoubleSide): the shell's front and back layers
-              are both real geometry with outward-facing normals, so
-              DoubleSide would render both at once from any given angle —
-              the front layer's inside face bleeding through together with
-              the back layer, both carrying the same photo texture, which
-              looks like a ghosted double/mirrored image from the side.
-              FrontSide shows only whichever layer actually faces the
-              camera, which is what a real solid object does. */}
+          {/* The front uses the source photo. A single-photo reconstruction has
+              no truthful rear image, so its back group uses a neutral material;
+              only a real multi-view atlas is allowed to texture that surface. */}
           <mesh geometry={geometry}>
-            <meshStandardMaterial
-              map={texture ?? null}
-              roughness={0.9}
-              metalness={0}
-              side={THREE.FrontSide}
-            />
+            {hasBackSurface ? (
+              <>
+                <meshStandardMaterial
+                  attach="material-0"
+                  map={texture ?? null}
+                  roughness={0.9}
+                  metalness={0}
+                  transparent
+                  side={THREE.FrontSide}
+                />
+                <meshStandardMaterial
+                  attach="material-1"
+                  map={backUsesTexture ? texture : null}
+                  color={backUsesTexture ? "#ffffff" : DEFAULT_RELIEF_BACK_COLOR}
+                  roughness={0.9}
+                  metalness={0}
+                  transparent={backUsesTexture}
+                  side={THREE.FrontSide}
+                />
+              </>
+            ) : (
+              <meshStandardMaterial
+                map={texture ?? null}
+                roughness={0.9}
+                metalness={0}
+                transparent
+                side={THREE.FrontSide}
+              />
+            )}
           </mesh>
         </group>
       ) : null}

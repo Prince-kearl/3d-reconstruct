@@ -4,6 +4,11 @@ import { toast } from "sonner";
 import * as THREE from "three";
 
 import { buildExportBlob, downloadBlob, type ExportFormat } from "@/lib/mesh/exportMesh";
+import {
+  DEFAULT_RELIEF_BACK_COLOR,
+  hasReliefBackSurface,
+  reliefBackUsesTexture,
+} from "@/lib/mesh/reliefSurface";
 import { projectStore } from "@/lib/projects";
 import { cn } from "@/lib/utils";
 import {
@@ -58,12 +63,25 @@ export function PropertiesPanel() {
     const physicalScale = cm / 20; // 20 world-units-wide baseline maps to the requested cm width
     const geometry = s.geometry.clone();
     geometry.scale(physicalScale, physicalScale, physicalScale);
-    const material = new THREE.MeshStandardMaterial({
+    const frontMaterial = new THREE.MeshStandardMaterial({
       map: format === "glb" ? s.texture : null,
       transparent: format === "glb",
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
     });
-    const mesh = new THREE.Mesh(geometry, material);
+    const hasBackSurface = hasReliefBackSurface(geometry);
+    const backUsesTexture = reliefBackUsesTexture(geometry) && format === "glb";
+    const backMaterial = hasBackSurface
+      ? new THREE.MeshStandardMaterial({
+          map: backUsesTexture ? s.texture : null,
+          color: backUsesTexture ? "#ffffff" : DEFAULT_RELIEF_BACK_COLOR,
+          transparent: backUsesTexture,
+          side: THREE.FrontSide,
+        })
+      : null;
+    const mesh = new THREE.Mesh(
+      geometry,
+      backMaterial ? [frontMaterial, backMaterial] : frontMaterial,
+    );
     mesh.scale.setScalar(s.scale);
     mesh.rotation.y = (s.rotationY * Math.PI) / 180;
 
@@ -85,7 +103,8 @@ export function PropertiesPanel() {
       toast.error("Export failed");
     } finally {
       geometry.dispose();
-      material.dispose();
+      frontMaterial.dispose();
+      backMaterial?.dispose();
     }
   };
 
