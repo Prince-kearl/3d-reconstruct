@@ -33,8 +33,8 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app px-4">
-      <div className="w-full max-w-[360px] rounded-[6px] border border-line bg-panel p-[24px]">
+    <div className="auth-page flex min-h-screen items-center justify-center bg-app px-4">
+      <div className="w-full max-w-[360px] rounded-[6px] border border-line bg-panel p-[20px] sm:p-[24px]">
         <h1 className="text-[16px] font-semibold text-txt">Set a new password</h1>
 
         {done ? (
@@ -53,7 +53,7 @@ function ResetPasswordPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-[32px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[12px] text-txt outline-none focus:border-accent"
+                className="h-[44px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[16px] text-txt outline-none focus:border-accent sm:h-[32px] sm:text-[12px]"
               />
             </div>
 
@@ -62,7 +62,7 @@ function ResetPasswordPage() {
             <button
               type="submit"
               disabled={busy}
-              className="flex h-[34px] w-full items-center justify-center rounded-[5px] text-[12.5px] font-medium text-white shadow-[0_4px_16px_-6px_var(--accent)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-[44px] w-full items-center justify-center rounded-[5px] text-[13px] font-medium text-white shadow-[0_4px_16px_-6px_var(--accent)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-[34px] sm:text-[12.5px]"
               style={{ background: "var(--gradient-accent)" }}
             >
               {busy ? "Updating…" : "Update password"}

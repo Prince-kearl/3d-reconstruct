@@ -31,7 +31,7 @@ export function ConsoleExplorer({
   ];
 
   return (
-    <aside className="scroll-thin flex w-full shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px] lg:w-[280px]">
+    <aside className="console-explorer-panel scroll-thin flex w-full shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px] lg:w-[280px]">
       <div>
         <PanelSectionTitle>1. PROJECT</PanelSectionTitle>
         <div className="mt-[10px] flex gap-[10px]">
@@ -63,7 +63,7 @@ export function ConsoleExplorer({
 
       <div className="border-t border-line pt-[12px]">
         <PanelSectionTitle>2. SEARCH</PanelSectionTitle>
-        <div className="mt-[9px] flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
+        <div className="console-explorer-search mt-[9px] flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
           <Search className="size-[13px] shrink-0 text-txt-dim" />
           <input
             aria-label="Search log lines"
@@ -85,7 +85,7 @@ export function ConsoleExplorer({
               aria-pressed={level === l.label}
               onClick={() => onLevelChange(l.label)}
               className={cn(
-                "flex h-[26px] w-full items-center rounded-[4px] px-[7px] text-[11.5px] transition-colors",
+                "mobile-hit-target flex h-[26px] w-full items-center rounded-[4px] px-[7px] text-[11.5px] transition-colors",
                 level === l.label
                   ? "bg-accent/15 text-txt"
                   : "text-txt-muted hover:bg-surface-2/70",

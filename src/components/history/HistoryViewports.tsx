@@ -45,12 +45,23 @@ export function HistoryComparisonViewport() {
       ref={ref}
       className="viewport-surface relative flex-1 select-none overflow-hidden"
       onPointerDown={(e) => {
+        if (e.pointerType !== "mouse" || (e.target as HTMLElement).closest('[role="slider"]'))
+          return;
         dragging.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
         move(e.clientX);
       }}
-      onPointerMove={(e) => dragging.current && move(e.clientX)}
-      onPointerUp={() => (dragging.current = false)}
-      onPointerLeave={() => (dragging.current = false)}
+      onPointerMove={(e) => {
+        if (dragging.current && e.pointerType === "mouse" && e.target === e.currentTarget) {
+          move(e.clientX);
+        }
+      }}
+      onPointerUp={(e) => {
+        if (e.pointerType === "mouse") dragging.current = false;
+      }}
+      onPointerCancel={(e) => {
+        if (e.pointerType === "mouse") dragging.current = false;
+      }}
     >
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] opacity-[0.4]"
@@ -85,14 +96,50 @@ export function HistoryComparisonViewport() {
         )}
       </div>
 
-      <div
-        className="pointer-events-none absolute inset-y-0 w-px bg-accent-2 shadow-[0_0_12px_var(--accent)]"
+      <button
+        type="button"
+        role="slider"
+        aria-label="Before and after comparison split"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={s.split}
+        aria-valuetext={`${s.split}% after image visible`}
+        className="absolute inset-y-0 z-20 w-11 -translate-x-1/2 cursor-ew-resize touch-none bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-2"
         style={{ left: `${s.split}%` }}
+        onPointerDown={(e) => {
+          dragging.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          move(e.clientX);
+        }}
+        onPointerMove={(e) => dragging.current && move(e.clientX)}
+        onPointerUp={() => {
+          dragging.current = false;
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+        }}
+        onKeyDown={(e) => {
+          const step = e.shiftKey ? 10 : 1;
+          if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+            e.preventDefault();
+            s.setSplit(Math.max(0, s.split - step));
+          } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+            e.preventDefault();
+            s.setSplit(Math.min(100, s.split + step));
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            s.setSplit(0);
+          } else if (e.key === "End") {
+            e.preventDefault();
+            s.setSplit(100);
+          }
+        }}
       >
-        <span className="absolute left-1/2 top-1/2 flex size-[26px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent-2 bg-surface text-[10px] text-accent-2">
+        <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-accent-2 shadow-[0_0_12px_var(--accent)]" />
+        <span className="pointer-events-none absolute left-1/2 top-1/2 flex size-[36px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent-2 bg-surface text-[10px] text-accent-2">
           ⇔
         </span>
-      </div>
+      </button>
 
       <span className="absolute left-[16px] top-[12px] z-10 rounded-[4px] bg-surface/80 px-[8px] py-[3px] text-[11px] text-txt-muted backdrop-blur-sm">
         Photo vs reconstructed mesh
@@ -101,7 +148,7 @@ export function HistoryComparisonViewport() {
         split {s.split}%
       </span>
       {s.showDiff ? (
-        <span className="absolute bottom-[16px] left-1/2 -translate-x-1/2 rounded-[5px] border border-line bg-surface/85 px-[12px] py-[6px] font-mono text-[10.5px] text-txt-muted backdrop-blur-sm">
+        <span className="history-diff-summary absolute bottom-[16px] left-1/2 -translate-x-1/2 rounded-[5px] border border-line bg-surface/85 px-[12px] py-[6px] font-mono text-[10.5px] text-txt-muted backdrop-blur-sm">
           {s.diffStats.map((d) => `${d.label}: ${d.value}`).join(" · ")}
         </span>
       ) : null}
@@ -133,7 +180,11 @@ export function HistoryTimeline() {
                     active ? "border-accent-2 bg-accent" : "border-line-strong bg-surface-2",
                   )}
                 />
-                <button type="button" onClick={() => s.setCompareId(v.id)} className="text-left">
+                <button
+                  type="button"
+                  onClick={() => s.setCompareId(v.id)}
+                  className="mobile-hit-target text-left"
+                >
                   <span
                     className={cn("block text-[11px]", active ? "text-accent-2" : "text-txt-muted")}
                   >

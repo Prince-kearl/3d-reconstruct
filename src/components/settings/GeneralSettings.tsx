@@ -84,9 +84,11 @@ function AccountSection() {
     <Card title="Account">
       <div className="flex items-center justify-between gap-2">
         <FieldLabel>Email</FieldLabel>
-        <span className="text-[11.5px] text-txt">{user?.email ?? "—"}</span>
+        <span className="settings-account-email min-w-0 text-[11.5px] text-txt">
+          {user?.email ?? "—"}
+        </span>
       </div>
-      <div className="flex items-center gap-[8px]">
+      <div className="settings-display-row flex items-center gap-[8px]">
         <FieldLabel className="w-[100px] shrink-0">Display Name</FieldLabel>
         <input
           aria-label="Display name"
@@ -141,13 +143,13 @@ function ReconstructionDefaultsSection() {
         Where new reconstructions start from — changing these doesn't affect projects you've already
         created.
       </p>
-      <div className="flex items-center justify-between gap-2">
+      <div className="settings-quality-row flex items-center justify-between gap-2">
         <FieldLabel className="w-[100px] shrink-0">Quality</FieldLabel>
         <SegmentedControl
           options={["Fast", "Balanced", "High"] as const}
           value={defaults.quality}
           onChange={(v) => update({ quality: v })}
-          className="w-[200px]"
+          className="settings-quality-control w-full min-w-0 sm:w-[200px]"
         />
       </div>
       <SliderControl

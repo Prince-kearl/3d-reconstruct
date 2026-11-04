@@ -57,7 +57,7 @@ export function LiveConsole({
 
   return (
     <section className="flex h-[320px] min-w-0 shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1">
-      <div className="flex h-[38px] shrink-0 items-center gap-[10px] border-b border-line px-[12px]">
+      <div className="console-live-header flex h-[38px] shrink-0 items-center gap-[10px] border-b border-line px-[12px]">
         <span
           className={cn("size-[9px] rounded-full", isLive ? "bg-ok" : "bg-txt-dim")}
           style={isLive ? { boxShadow: "0 0 8px var(--ok)" } : undefined}

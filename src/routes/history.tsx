@@ -110,10 +110,10 @@ function HistoryWorkspace({ projectId }: { projectId: string }) {
       workspace={
         <>
           <HistoryPanel />
-          <div className="flex min-w-0 flex-1 flex-col gap-[8px]">
-            <div className="flex h-[420px] shrink-0 lg:h-[560px] flex-col gap-[8px] xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
+          <div className="history-workspace-column flex min-w-0 flex-1 flex-col gap-[8px]">
+            <div className="mobile-view-gallery flex h-[420px] shrink-0 lg:h-[560px] flex-col gap-[8px] xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
               <HistoryComparisonViewport />
-              <div className="grid h-[260px] shrink-0 lg:h-[320px] grid-cols-2 grid-rows-2 gap-[8px] xl:h-auto xl:w-[300px]">
+              <div className="mobile-view-gallery__secondary--thumbs grid h-[260px] shrink-0 lg:h-[320px] grid-cols-2 grid-rows-2 gap-[8px] xl:h-auto xl:w-[300px]">
                 {thumbSlots.map((v) => (
                   <HistoryThumb key={v.id} id={v.id} />
                 ))}

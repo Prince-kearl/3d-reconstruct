@@ -61,11 +61,11 @@ export function RecentProjects({
               Turn a photo into a rotatable pseudo-3D depth relief. Pick up a recent project or
               start a new reconstruction.
             </p>
-            <div className="mt-[12px] flex items-center gap-[8px]">
+            <div className="home-project-actions mt-[12px] flex items-center gap-[8px]">
               <button
                 type="button"
                 onClick={onNewProject}
-                className="flex h-[30px] items-center gap-[7px] rounded-[5px] px-[14px] text-[11.5px] font-medium text-white"
+                className="flex h-[44px] items-center gap-[7px] rounded-[5px] px-[14px] text-[11.5px] font-medium text-white sm:h-[30px]"
                 style={{ background: "var(--gradient-accent)" }}
               >
                 <Sparkles className="size-[13px]" /> New Project
@@ -74,7 +74,7 @@ export function RecentProjects({
                 <Link
                   to="/reconstruct"
                   search={{ project: mostRecent.id }}
-                  className="flex h-[30px] items-center rounded-[5px] border border-line bg-surface px-[14px] text-[11.5px] text-txt-muted hover:text-txt"
+                  className="home-continue-link flex h-[44px] min-w-0 items-center rounded-[5px] border border-line bg-surface px-[14px] text-[11.5px] text-txt-muted hover:text-txt sm:h-[30px]"
                 >
                   Continue "{mostRecent.name}"
                 </Link>
@@ -90,10 +90,10 @@ export function RecentProjects({
         </div>
       </section>
 
-      <section className="flex h-[420px] shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:h-auto lg:min-h-0 lg:flex-1">
-        <div className="flex h-[42px] shrink-0 items-center gap-[8px] border-b border-line px-[12px]">
+      <section className="home-project-list-panel flex h-[420px] shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:h-auto lg:min-h-0 lg:flex-1">
+        <div className="home-project-toolbar flex h-[42px] shrink-0 items-center gap-[8px] border-b border-line px-[12px]">
           <h2 className="text-[12px] font-semibold text-txt">Recent Projects</h2>
-          <div className="ml-[6px] flex items-center gap-[3px]">
+          <div className="home-project-filters ml-[6px] flex items-center gap-[3px]">
             {FILTERS.map((f) => (
               <button
                 key={f}
@@ -111,14 +111,14 @@ export function RecentProjects({
               </button>
             ))}
           </div>
-          <div className="ml-auto flex h-[26px] w-[196px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
+          <div className="home-project-search ml-auto flex h-[40px] w-[196px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px] sm:h-[26px]">
             <Search className="size-[13px] text-txt-dim" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects"
               aria-label="Search projects"
-              className="w-full min-w-0 bg-transparent text-[11px] text-txt outline-none placeholder:text-txt-dim"
+              className="w-full min-w-0 bg-transparent text-[16px] text-txt outline-none placeholder:text-txt-dim sm:text-[11px]"
             />
           </div>
           <IconButton

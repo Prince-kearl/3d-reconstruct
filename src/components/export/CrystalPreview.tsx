@@ -75,18 +75,18 @@ export function CrystalPreview({
 
   return (
     <div ref={ref} className="viewport-surface relative flex-1 overflow-hidden">
-      <span className="absolute left-[16px] top-[12px] z-10 text-[11.5px] text-txt-muted">
+      <span className="crystal-preview-title absolute left-[16px] top-[12px] z-10 text-[11.5px] text-txt-muted">
         Crystal Preview — drag to rotate 360°
       </span>
 
       {ready ? (
-        <div className="absolute right-[14px] top-[10px] z-10 flex items-center gap-[2px] rounded-[4px] border border-line bg-surface/85 p-[3px] backdrop-blur-sm">
+        <div className="crystal-preview-presets absolute right-[14px] top-[10px] z-10 flex items-center gap-[2px] rounded-[4px] border border-line bg-surface/85 p-[3px] backdrop-blur-sm">
           {VIEW_PRESET_LABELS.map(({ label, preset }) => (
             <button
               key={preset}
               type="button"
               onClick={() => viewerRef.current?.goToView(preset)}
-              className="rounded-[3px] px-[8px] py-[3px] text-[10.5px] text-txt-muted transition-colors hover:bg-surface-2 hover:text-txt"
+              className="mobile-hit-target rounded-[3px] px-[8px] py-[3px] text-[10.5px] text-txt-muted transition-colors hover:bg-surface-2 hover:text-txt"
             >
               {label}
             </button>
@@ -117,7 +117,7 @@ export function CrystalPreview({
         />
       )}
 
-      <div className="absolute bottom-[16px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-[2px] rounded-[6px] border border-line bg-surface/85 p-[5px] backdrop-blur-sm">
+      <div className="viewport-bottom-tools absolute bottom-[16px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-[2px] rounded-[6px] border border-line bg-surface/85 p-[5px] backdrop-blur-sm">
         {tools.map(({ label, icon: Icon, active, run }) => (
           <button
             key={label}

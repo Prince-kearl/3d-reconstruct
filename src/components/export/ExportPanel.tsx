@@ -28,7 +28,7 @@ export function ExportPanel({
   const s = useReconstruct();
 
   return (
-    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
+    <aside className="export-controls-panel flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
       <div className="border-b border-line px-[16px] py-[14px]">
         <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">EXPORT WORKSPACE</h1>
       </div>
@@ -82,7 +82,7 @@ export function ExportPanel({
                   aria-pressed={material.color === t.color}
                   onClick={() => onMaterialChange({ color: t.color })}
                   className={cn(
-                    "size-[26px] shrink-0 rounded-full border-2 transition-transform",
+                    "mobile-hit-target size-[26px] shrink-0 rounded-full border-2 transition-transform",
                     material.color === t.color
                       ? "scale-110 border-accent-2"
                       : "border-line hover:scale-105",

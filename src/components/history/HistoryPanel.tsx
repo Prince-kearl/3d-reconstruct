@@ -14,7 +14,7 @@ export function HistoryPanel() {
   const list = s.versions.filter((v) => s.filter === "All" || v.stage === s.filter);
 
   return (
-    <aside className="scroll-thin flex w-full shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px] lg:w-[300px]">
+    <aside className="history-explorer-panel scroll-thin flex w-full shrink-0 flex-col gap-[14px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[13px] lg:w-[300px]">
       <div>
         <PanelSectionTitle>History Explorer</PanelSectionTitle>
         <div className="mt-[10px] flex flex-wrap gap-[5px]">

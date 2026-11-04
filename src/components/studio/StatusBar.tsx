@@ -24,12 +24,12 @@ export function StatusBar({ status = "Ready" }: { status?: string }) {
   const webgpu = useWebGpuAvailable();
   return (
     <footer className="flex h-[38px] shrink-0 items-center gap-[6px] overflow-hidden border-t border-line bg-panel px-[10px] text-[11px] text-txt-muted sm:gap-[10px]">
-      <IconButton label="Activity" size={22} className="hidden sm:flex">
+      <IconButton label="Activity" size={22} className="hidden md:flex">
         <Activity className="size-[13px]" />
       </IconButton>
       <button
         type="button"
-        className="hidden items-center gap-[6px] rounded-[4px] bg-surface-2 px-[8px] py-[4px] text-txt-muted hover:text-txt sm:flex"
+        className="hidden items-center gap-[6px] rounded-[4px] bg-surface-2 px-[8px] py-[4px] text-txt-muted hover:text-txt md:flex"
       >
         <GitBranch className="size-[12px]" />
         main
@@ -64,7 +64,7 @@ export function StatusBar({ status = "Ready" }: { status?: string }) {
           <span className={`size-[6px] rounded-full ${webgpu ? "bg-ok" : "bg-txt-dim"}`} />
           WebGPU: {webgpu ? "available" : "unavailable (using CPU/WASM)"}
         </span>
-        <IconButton label="Copy diagnostics" size={22} className="hidden sm:flex">
+        <IconButton label="Copy diagnostics" size={22} className="hidden md:flex">
           <Copy className="size-[13px]" />
         </IconButton>
       </div>

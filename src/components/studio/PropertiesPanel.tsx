@@ -90,7 +90,7 @@ export function PropertiesPanel() {
   };
 
   return (
-    <aside className="flex h-full w-full shrink-0 flex-col bg-panel lg:border-l lg:border-line">
+    <aside className="mobile-properties-panel flex h-full w-full shrink-0 flex-col bg-panel lg:border-l lg:border-line">
       <div
         role="tablist"
         className="flex h-[44px] shrink-0 items-center border-b border-line px-[8px]"

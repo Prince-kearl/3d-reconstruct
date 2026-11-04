@@ -30,7 +30,7 @@ export function IconButton({
       disabled={disabled}
       style={{ width: size, height: size }}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-[4px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        "mobile-hit-target inline-flex shrink-0 items-center justify-center rounded-[4px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
         active
           ? "bg-accent/20 text-accent-2"
           : "text-txt-dim hover:bg-surface-2 hover:text-txt-muted",
@@ -79,7 +79,7 @@ export function SegmentedControl<T extends string>({
             aria-checked={selected}
             onClick={() => onChange(opt)}
             className={cn(
-              "h-[26px] rounded-[4px] text-[11.5px] transition-colors",
+              "mobile-hit-target h-[26px] rounded-[4px] text-[11.5px] transition-colors",
               selected && accent
                 ? "border border-accent/70 bg-accent/15 font-medium text-accent-2"
                 : selected
@@ -120,7 +120,7 @@ export function SliderControl({
   const pct = ((value - min) / (max - min)) * 100;
   const display = format ? format(value) : `${value}%`;
   const track = (
-    <div className="relative flex h-4 flex-1 items-center">
+    <div className="touch-slider-track relative flex h-4 flex-1 items-center">
       <div className="h-[3px] w-full rounded-full bg-line-strong" />
       <div
         className="absolute left-0 h-[3px] rounded-full bg-accent"
@@ -193,17 +193,21 @@ export function ToggleSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={cn(
-        "relative h-[18px] w-[34px] shrink-0 rounded-full transition-colors",
-        checked ? "bg-accent" : "bg-line-strong",
-      )}
+      className="mobile-switch-target relative inline-flex h-[24px] w-[40px] shrink-0 items-center justify-center rounded-full"
     >
       <span
         className={cn(
-          "absolute top-[2px] size-[14px] rounded-full bg-white transition-all",
-          checked ? "left-[18px]" : "left-[2px]",
+          "relative h-[18px] w-[34px] rounded-full transition-colors",
+          checked ? "bg-accent" : "bg-line-strong",
         )}
-      />
+      >
+        <span
+          className={cn(
+            "absolute top-[2px] size-[14px] rounded-full bg-white transition-all",
+            checked ? "left-[18px]" : "left-[2px]",
+          )}
+        />
+      </span>
     </button>
   );
 }
@@ -224,7 +228,7 @@ export function Select({
   return (
     <div
       className={cn(
-        "relative flex h-[30px] items-center rounded-[4px] border border-line bg-surface px-[10px]",
+        "mobile-select-field relative flex h-[30px] items-center rounded-[4px] border border-line bg-surface px-[10px]",
         className,
       )}
     >
@@ -256,7 +260,7 @@ export function NumberField({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex h-[26px] items-center gap-[6px] rounded-[4px] border border-line bg-surface px-[8px]">
+    <div className="mobile-number-field flex h-[26px] items-center gap-[6px] rounded-[4px] border border-line bg-surface px-[8px]">
       {prefix ? <span className="text-[10.5px] text-txt-dim">{prefix}</span> : null}
       <input
         aria-label={label}
@@ -298,7 +302,7 @@ export function CollapsibleSection({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-[6px] text-left"
+        className="mobile-hit-target flex w-full items-center gap-[6px] text-left"
       >
         <ChevronDown
           className={cn("size-[13px] text-txt-dim transition-transform", !open && "-rotate-90")}

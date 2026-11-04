@@ -267,7 +267,7 @@ function ExplorerPage() {
       }
       workspace={
         <>
-          <aside className="flex w-full shrink-0 flex-col gap-[10px] rounded-[6px] border border-line bg-panel px-[12px] py-[12px] lg:w-[236px]">
+          <aside className="mobile-explorer-filters flex w-full shrink-0 flex-col gap-[10px] rounded-[6px] border border-line bg-panel px-[12px] py-[12px] lg:w-[236px]">
             <h2 className="text-[11px] font-semibold tracking-[0.08em] text-txt-muted">PROJECTS</h2>
             <div className="flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
               <Search className="size-[13px] shrink-0 text-txt-dim" />
@@ -287,7 +287,7 @@ function ExplorerPage() {
                   aria-current={folder === f ? "true" : undefined}
                   onClick={() => setFolder(f)}
                   className={cn(
-                    "flex h-[30px] w-full items-center gap-[8px] rounded-[4px] px-[8px] text-[11.5px] transition-colors",
+                    "mobile-hit-target flex h-[30px] w-full items-center gap-[8px] rounded-[4px] px-[8px] text-[11.5px] transition-colors",
                     folder === f
                       ? "bg-accent/15 text-txt"
                       : "text-txt-muted hover:bg-surface-2/70 hover:text-txt",
@@ -300,14 +300,14 @@ function ExplorerPage() {
             </nav>
             <Link
               to="/reconstruct"
-              className="flex h-[30px] w-full items-center justify-center gap-[6px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
+              className="mobile-hit-target flex h-[30px] w-full items-center justify-center gap-[6px] rounded-[4px] border border-line bg-surface-2 text-[11.5px] text-txt transition-colors hover:border-line-strong"
             >
               <Plus className="size-[13px]" />
               New Reconstruction
             </Link>
           </aside>
 
-          <section className="scroll-thin flex min-w-0 flex-1 flex-col gap-[10px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[12px]">
+          <section className="mobile-explorer-results scroll-thin flex min-w-0 flex-1 flex-col gap-[10px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[14px] py-[12px]">
             <h2 className="text-[13px] font-semibold text-txt">{folder}</h2>
             {isLoading ? (
               <p className="rounded-[6px] border border-dashed border-line-strong px-[14px] py-[26px] text-center text-[11.5px] text-txt-dim">
@@ -334,7 +334,7 @@ function ExplorerPage() {
               <div
                 className={cn(
                   view === "grid"
-                    ? "grid grid-cols-2 gap-[10px] sm:grid-cols-3 lg:grid-cols-4"
+                    ? "grid grid-cols-1 gap-[10px] min-[480px]:grid-cols-2 lg:grid-cols-4"
                     : "flex flex-col gap-[6px]",
                 )}
               >
@@ -347,7 +347,7 @@ function ExplorerPage() {
                       aria-pressed={sel}
                       onClick={() => setSelectedId(p.id)}
                       className={cn(
-                        "overflow-hidden rounded-[6px] border text-left transition-colors",
+                        "mobile-hit-target overflow-hidden rounded-[6px] border text-left transition-colors",
                         sel
                           ? "border-accent/70 bg-accent/12"
                           : "border-line bg-surface hover:bg-surface-2",

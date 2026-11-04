@@ -38,7 +38,7 @@ export function SettingsNav({
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
   return (
-    <aside className="scroll-thin flex w-full shrink-0 flex-col gap-[12px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[12px] py-[12px] lg:w-[236px]">
+    <aside className="mobile-settings-nav scroll-thin flex w-full shrink-0 flex-col gap-[12px] overflow-y-auto rounded-[6px] border border-line bg-panel px-[12px] py-[12px] lg:w-[236px]">
       <h2 className="text-[11px] font-semibold tracking-[0.08em] text-txt-muted">SETTINGS</h2>
       <div className="flex h-[28px] items-center gap-[7px] rounded-[4px] border border-line bg-surface px-[8px]">
         <Search className="size-[13px] shrink-0 text-txt-dim" />

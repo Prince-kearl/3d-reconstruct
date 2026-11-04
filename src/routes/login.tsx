@@ -58,8 +58,8 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app px-4">
-      <div className="w-full max-w-[360px] rounded-[6px] border border-line bg-panel p-[24px]">
+    <div className="auth-page flex min-h-screen items-center justify-center bg-app px-4">
+      <div className="w-full max-w-[360px] rounded-[6px] border border-line bg-panel p-[20px] sm:p-[24px]">
         <div className="mb-[18px] flex items-center gap-[9px]">
           <svg viewBox="0 0 24 24" className="size-[19px] text-txt" aria-hidden="true">
             <path
@@ -90,7 +90,7 @@ function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-[32px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[12px] text-txt outline-none focus:border-accent"
+              className="h-[44px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[16px] text-txt outline-none focus:border-accent sm:h-[32px] sm:text-[12px]"
             />
           </div>
           <div className="space-y-[6px]">
@@ -105,7 +105,7 @@ function LoginPage() {
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-[32px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[12px] text-txt outline-none focus:border-accent"
+              className="h-[44px] w-full rounded-[4px] border border-line bg-surface px-[10px] text-[16px] text-txt outline-none focus:border-accent sm:h-[32px] sm:text-[12px]"
             />
           </div>
 
@@ -115,14 +115,14 @@ function LoginPage() {
           <button
             type="submit"
             disabled={busy}
-            className="flex h-[34px] w-full items-center justify-center rounded-[5px] text-[12.5px] font-medium text-white shadow-[0_4px_16px_-6px_var(--accent)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-[44px] w-full items-center justify-center rounded-[5px] text-[13px] font-medium text-white shadow-[0_4px_16px_-6px_var(--accent)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-[34px] sm:text-[12.5px]"
             style={{ background: "var(--gradient-accent)" }}
           >
             {busy ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Sign up"}
           </button>
         </form>
 
-        <div className="mt-[14px] flex items-center justify-between text-[11px]">
+        <div className="mt-[14px] flex flex-wrap items-center justify-between gap-2 text-[11px]">
           <button
             type="button"
             onClick={() => {
@@ -130,7 +130,7 @@ function LoginPage() {
               setError(null);
               setNotice(null);
             }}
-            className="text-txt-muted hover:text-txt"
+            className="min-h-[44px] rounded px-1 text-left text-txt-muted hover:text-txt"
           >
             {mode === "sign-in" ? "Need an account? Sign up" : "Have an account? Sign in"}
           </button>
@@ -138,7 +138,7 @@ function LoginPage() {
             <button
               type="button"
               onClick={() => void forgotPassword()}
-              className="text-txt-muted hover:text-txt"
+              className="min-h-[44px] rounded px-1 text-right text-txt-muted hover:text-txt"
             >
               Forgot password?
             </button>

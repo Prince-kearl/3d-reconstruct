@@ -205,7 +205,7 @@ export function AppHeader({
       </DropdownMenu>
 
       <div className="ml-auto flex items-center gap-[4px] sm:gap-[6px]">
-        <div className="hidden items-center gap-[4px] sm:flex">
+        <div className="hidden items-center gap-[4px] lg:flex">
           <IconButton
             label="Cycle panel width"
             disabled={!onCyclePanelWidth}
@@ -237,7 +237,7 @@ export function AppHeader({
           </IconButton>
         ) : null}
         <span className="mx-[4px] hidden h-[18px] w-px bg-line sm:mx-[8px] sm:block" />
-        <div className="hidden items-center gap-[4px] sm:flex">
+        <div className="hidden items-center gap-[4px] lg:flex">
           <IconButton label="Minimise" size={26}>
             <Minus className="size-[14px]" />
           </IconButton>

@@ -128,10 +128,10 @@ function TextureWorkspace({ projectId }: { projectId: string }) {
       workspace={
         <>
           <TexturePanel />
-          <div className="flex min-w-0 flex-1 flex-col gap-[8px]">
-            <div className="flex h-[420px] shrink-0 lg:h-[560px] flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
+          <div className="texture-preview-column flex min-w-0 flex-1 flex-col gap-[8px]">
+            <div className="mobile-view-gallery flex h-[420px] shrink-0 lg:h-[560px] flex-col overflow-hidden rounded-[6px] border border-line bg-panel xl:h-auto xl:min-h-0 xl:flex-1 xl:flex-row">
               <PerspectiveViewport />
-              <div className="grid h-[260px] shrink-0 lg:h-[320px] grid-rows-[28.5fr_28.5fr_43fr] border-t border-line xl:h-auto xl:w-[39%] xl:border-l xl:border-t-0">
+              <div className="mobile-view-gallery__secondary--views grid h-[260px] shrink-0 lg:h-[320px] grid-rows-[28.5fr_28.5fr_43fr] border-t border-line xl:h-auto xl:w-[39%] xl:border-l xl:border-t-0">
                 <OrthographicViewport name="Front" gizmo="front" className="border-b border-line" />
                 <OrthographicViewport
                   name="Three-Quarter"

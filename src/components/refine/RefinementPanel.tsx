@@ -28,7 +28,7 @@ export function RefinementPanel() {
     : null;
 
   return (
-    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
+    <aside className="refine-controls-panel flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
       <div className="border-b border-line px-[16px] py-[14px]">
         <h1 className="text-[12.5px] font-semibold tracking-[0.06em] text-txt">REFINE MESH</h1>
       </div>

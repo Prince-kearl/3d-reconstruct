@@ -201,7 +201,7 @@ export function PerspectiveViewport() {
         />
       )}
 
-      <div className="absolute left-[8px] top-[42px] z-10 flex flex-col gap-[6px]">
+      <div className="viewport-tools-rail absolute left-[8px] top-[42px] z-10 flex flex-col gap-[6px]">
         {STRIP_TOOLS.map(({ label, icon: Icon, action }, i) => {
           const active = isActive(action, i, tool);
           return (
@@ -230,7 +230,7 @@ export function PerspectiveViewport() {
         })}
       </div>
 
-      <div className="absolute bottom-[16px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-[2px] rounded-[6px] border border-line bg-surface/85 p-[5px] backdrop-blur-sm">
+      <div className="viewport-bottom-tools absolute bottom-[16px] left-1/2 z-10 flex -translate-x-1/2 items-center gap-[2px] rounded-[6px] border border-line bg-surface/85 p-[5px] backdrop-blur-sm">
         {BOTTOM_TOOLS.map(({ label, icon: Icon, action }, i) => {
           const active = isActive(action, i, bottomTool);
           return (

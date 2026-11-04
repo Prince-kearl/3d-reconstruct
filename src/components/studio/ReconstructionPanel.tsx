@@ -19,7 +19,7 @@ export function ReconstructionPanel() {
   };
 
   return (
-    <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
+    <aside className="reconstruction-controls-panel flex w-full shrink-0 flex-col overflow-hidden rounded-[6px] border border-line bg-panel lg:w-[300px]">
       <div className="scroll-thin flex-1 overflow-y-auto">
         <section className="border-b border-line px-[16px] py-[13px]">
           <PanelSectionTitle>1. INPUT</PanelSectionTitle>

@@ -66,7 +66,7 @@ export function WorkspaceToolbar({
   const layoutIcons = [LayoutPanelTop, Columns2, LayoutGrid, Grid2x2];
 
   return (
-    <div className="scroll-thin flex h-[44px] shrink-0 items-center gap-[8px] overflow-x-auto border-b border-line bg-panel px-[10px] sm:gap-[10px] sm:px-[12px]">
+    <div className="workspace-toolbar scroll-thin flex h-[44px] shrink-0 items-center gap-[8px] overflow-x-auto border-b border-line bg-panel px-[10px] sm:gap-[10px] sm:px-[12px]">
       <div className="hidden shrink-0 items-center gap-[6px] xl:flex">
         <Sparkles className="size-[14px] text-accent-2" />
         <span className="text-[12.5px] font-medium text-txt">3D Workspace</span>
@@ -91,7 +91,7 @@ export function WorkspaceToolbar({
         </IconButton>
       </div>
 
-      <div className="flex shrink-0 items-center gap-[4px] rounded-[5px] border border-line bg-surface p-[3px] lg:mx-auto">
+      <div className="workspace-mode-list flex shrink-0 items-center gap-[4px] rounded-[5px] border border-line bg-surface p-[3px] lg:mx-auto">
         {modes.map((m) => {
           const selected = mode === m;
           const Icon = MODE_ICONS[m];
@@ -103,20 +103,20 @@ export function WorkspaceToolbar({
               aria-checked={selected}
               onClick={() => setMode(m)}
               className={cn(
-                "flex h-[26px] shrink-0 items-center gap-[6px] rounded-[4px] px-[9px] text-[11.5px] transition-colors sm:px-[11px]",
+                "workspace-mode-button mobile-toolbar-mode flex h-[26px] shrink-0 items-center gap-[6px] rounded-[4px] px-[9px] text-[11.5px] transition-colors sm:px-[11px]",
                 selected
                   ? "border border-accent/60 bg-accent/18 font-medium text-txt"
                   : "text-txt-muted hover:bg-surface-2 hover:text-txt",
               )}
             >
               <Icon className={cn("size-[13px]", selected ? "text-accent-2" : "text-txt-dim")} />
-              <span className="hidden sm:inline">{m}</span>
+              <span>{m}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="ml-auto hidden shrink-0 items-center gap-[3px] md:flex">
+      <div className="workspace-toolbar-actions ml-auto flex shrink-0 items-center gap-[3px]">
         <IconButton label="Scene controls" size={26}>
           <Orbit className="size-[14px]" />
         </IconButton>
